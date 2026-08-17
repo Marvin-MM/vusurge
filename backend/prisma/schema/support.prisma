@@ -1,0 +1,93 @@
+// Support tickets and feature requests (master prompt section 25).
+//
+// A user-owned table set: a user's own tickets span every organization they
+// touch, and platform staff need
+// cross-tenant visibility to triage. Authorization is enforced in the
+// service layer — an ordinary user only ever sees their own tickets
+// (`userId` match); platform staff need `Permission.PlatformSupport`.
+//
+// User-visible comments and internal staff notes are deliberately two
+// separate models, not one model with an `isInternal` flag: this makes "an
+// internal note can never reach participant-facing serialization" true by
+// construction — the participant-facing query has no path to the internal
+// table at all, rather than depending on every call site remembering to
+// filter a flag.
+
+enum SupportTicketCategory {
+  BUG
+  ACCESS_OR_ACCOUNT
+  ORGANIZATION_ISSUE
+  CHALLENGE_ISSUE
+  ABUSE_OR_SAFETY
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum SupportTicketStatus {
+  OPEN
+  TRIAGED
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model SupportTicket {
+  id                String                @id @db.Uuid
+  userId            String                @map("user_id") @db.Uuid
+  /// Context only, not a foreign key — a ticket must outlive the org/challenge it references.
+  organizationId    String?               @map("organization_id") @db.Uuid
+  challengeId       String?               @map("challenge_id") @db.Uuid
+  category          SupportTicketCategory
+  subject           String                @db.VarChar(200)
+  description       String
+  /// Platform-staff-controlled only; a normal user cannot set this on creation.
+  priority          SupportTicketPriority @default(NORMAL)
+  status            SupportTicketStatus   @default(OPEN)
+  assignedToUserId  String?               @map("assigned_to_user_id") @db.Uuid
+  resolutionSummary String?               @map("resolution_summary") @db.VarChar(2000)
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  comments      SupportTicketComment[]
+  internalNotes SupportTicketInternalNote[]
+
+  @@index([userId, createdAt(sort: Desc)], map: "support_ticket_user_created_idx")
+  @@index([status, priority, createdAt(sort: Desc)], map: "support_ticket_status_priority_idx")
+  @@map("support_ticket")
+}
+
+/// Visible to the ticket's own user and to platform staff.
+model SupportTicketComment {
+  id           String   @id @db.Uuid
+  ticketId     String   @map("ticket_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  body         String   @db.VarChar(4000)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt], map: "support_comment_ticket_idx")
+  @@map("support_ticket_comment")
+}
+
+/// Platform-staff-only. Never serialized to a participant-facing endpoint.
+model SupportTicketInternalNote {
+  id           String   @id @db.Uuid
+  ticketId     String   @map("ticket_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  body         String   @db.VarChar(4000)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt], map: "support_internal_note_ticket_idx")
+  @@map("support_ticket_internal_note")
+}

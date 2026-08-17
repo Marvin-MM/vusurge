@@ -1,0 +1,74 @@
+// Media assets (master prompt section 22.1). Cloudinary is image-only; a
+// signed upload authorization is issued for a specific purpose, the client
+// uploads directly, and the API verifies and confirms the result before any
+// domain record references it.
+//
+// Organization-owned assets are tenant-RLS scoped; user-owned assets such as
+// USER_AVATAR are actor-RLS scoped. Context resolution is available only
+// through an exact-ID SECURITY DEFINER function returning the minimum scope
+// fields required to choose the correct transaction boundary.
+
+enum MediaAssetPurpose {
+  USER_AVATAR
+  ORGANIZATION_LOGO
+  CHALLENGE_COVER
+  SPONSOR_LOGO
+  SUBMISSION_SCREENSHOT
+  SUPPORT_TICKET_SCREENSHOT
+  PORTFOLIO_EVIDENCE
+}
+
+enum MediaAssetStatus {
+  PENDING
+  CONFIRMED
+  PENDING_DELETION
+  DELETED
+}
+
+enum MediaAssetDeliveryType {
+  UPLOAD
+  AUTHENTICATED
+}
+
+model MediaAsset {
+  id                  String                 @id @db.Uuid
+  purpose             MediaAssetPurpose
+  status              MediaAssetStatus       @default(PENDING)
+  deliveryType        MediaAssetDeliveryType @default(UPLOAD) @map("delivery_type")
+  /// Set for every organization-scoped purpose; null for USER_AVATAR.
+  organizationId      String?                @map("organization_id") @db.Uuid
+  /// Required for challenge-owned purposes. This binds an authorization to
+  /// the exact challenge instead of merely to another resource in the tenant.
+  challengeId         String?                @map("challenge_id") @db.Uuid
+  /// The authenticated user who requested the upload authorization.
+  ownerUserId         String                 @map("owner_user_id") @db.Uuid
+  /// Immutable polymorphic binding established before the provider upload.
+  /// Attachment triggers require this exact resource to consume the asset.
+  resourceType        String                 @map("resource_type") @db.VarChar(80)
+  resourceId          String                 @map("resource_id") @db.Uuid
+  cloudinaryPublicId  String                 @unique @map("cloudinary_public_id") @db.VarChar(300)
+  format              String?                @db.VarChar(20)
+  bytes               Int?
+  width               Int?
+  height              Int?
+  /// Pending authorizations expire; unconfirmed rows past this point are
+  /// orphans a future retention job may reap. Ignored once CONFIRMED.
+  expiresAt           DateTime               @map("expires_at") @db.Timestamptz(6)
+  confirmedAt         DateTime?              @map("confirmed_at") @db.Timestamptz(6)
+  deletionRequestedAt DateTime?              @map("deletion_requested_at") @db.Timestamptz(6)
+  deletedAt           DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner            User              @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, map: "media_asset_owner_fk")
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "media_asset_organization_fk")
+  challenge        Challenge?        @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "media_asset_challenge_fk")
+  submissionAssets SubmissionAsset[]
+
+  @@unique([id, organizationId], map: "media_asset_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "media_asset_scope_uq")
+  @@index([organizationId, purpose], map: "media_asset_org_purpose_idx")
+  @@index([organizationId, challengeId, purpose], map: "media_asset_challenge_purpose_idx")
+  @@index([organizationId, challengeId, resourceType, resourceId], map: "media_asset_resource_idx")
+  @@index([status, expiresAt], map: "media_asset_status_expiry_idx")
+  @@map("media_asset")
+}

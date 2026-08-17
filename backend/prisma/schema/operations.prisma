@@ -1,0 +1,74 @@
+// Durable operational projections. These rows are derived from authoritative
+// business tables, but their lifecycle is transactional and tenant-isolated.
+
+enum ReminderScheduleKind {
+  REGISTRATION_DEADLINE
+  SUBMISSION_DEADLINE
+  JUDGING_DEADLINE
+  PORTFOLIO_REVIEW
+}
+
+enum ReminderScheduleStatus {
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+model ReminderSchedule {
+  id                     String                 @id @db.Uuid
+  organizationId         String                 @map("organization_id") @db.Uuid
+  challengeId            String?                @map("challenge_id") @db.Uuid
+  innovationId           String?                @map("innovation_id") @db.Uuid
+  kind                   ReminderScheduleKind
+  /// Stable resource/kind identity used to update rather than duplicate work.
+  deterministicKey       String                 @unique(map: "reminder_schedule_key_uq") @map("deterministic_key") @db.VarChar(255)
+  scheduledFor           DateTime               @map("scheduled_for") @db.Timestamptz(6)
+  targetAt               DateTime               @map("target_at") @db.Timestamptz(6)
+  revision               Int                    @default(1)
+  lastDispatchedRevision Int?                   @map("last_dispatched_revision")
+  status                 ReminderScheduleStatus @default(SCHEDULED)
+  sentAt                 DateTime?              @map("sent_at") @db.Timestamptz(6)
+  cancelledAt            DateTime?              @map("cancelled_at") @db.Timestamptz(6)
+  createdAt              DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "reminder_schedule_organization_fk")
+  challenge    Challenge?   @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "reminder_schedule_challenge_fk")
+  innovation   Innovation?  @relation(fields: [innovationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "reminder_schedule_innovation_fk")
+
+  @@index([status, scheduledFor], map: "reminder_schedule_due_idx")
+  @@index([organizationId, challengeId, kind], map: "reminder_schedule_challenge_idx")
+  @@map("reminder_schedule")
+}
+
+model AnalyticsDailyRollup {
+  id                            String   @id @db.Uuid
+  organizationId                String   @map("organization_id") @db.Uuid
+  challengeId                   String?  @map("challenge_id") @db.Uuid
+  /// `organization:<id>:<date>` or `challenge:<id>:<date>`.
+  scopeKey                      String   @unique(map: "analytics_rollup_scope_key_uq") @map("scope_key") @db.VarChar(255)
+  rollupDate                    DateTime @map("rollup_date") @db.Date
+  members                       Int      @default(0)
+  registrations                 Int      @default(0)
+  approvedParticipants          Int      @default(0) @map("approved_participants")
+  activeTeams                   Int      @default(0) @map("active_teams")
+  submissionsStarted            Int      @default(0) @map("submissions_started")
+  finalSubmissions              Int      @default(0) @map("final_submissions")
+  assignmentsTotal              Int      @default(0) @map("assignments_total")
+  scorecardsSubmitted           Int      @default(0) @map("scorecards_submitted")
+  finalistCount                 Int      @default(0) @map("finalist_count")
+  winnerCount                   Int      @default(0) @map("winner_count")
+  totalInnovations              Int      @default(0) @map("total_innovations")
+  promotedInnovations           Int      @default(0) @map("promoted_innovations")
+  activeMilestones              Int      @default(0) @map("active_milestones")
+  overdueMilestones             Int      @default(0) @map("overdue_milestones")
+  averageScoringTurnaroundHours Decimal? @map("average_scoring_turnaround_hours") @db.Decimal(12, 4)
+  calculatedAt                  DateTime @default(now()) @map("calculated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "analytics_rollup_organization_fk")
+  challenge    Challenge?   @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "analytics_rollup_challenge_fk")
+
+  @@index([organizationId, rollupDate(sort: Desc)], map: "analytics_rollup_org_date_idx")
+  @@index([organizationId, challengeId, rollupDate(sort: Desc)], map: "analytics_rollup_challenge_date_idx")
+  @@map("analytics_daily_rollup")
+}

@@ -1,0 +1,95 @@
+// The email suppression list fed by inbound Resend webhooks (master prompt
+// section 34.37). The webhook receipt table itself is `WebhookEvent` in
+// infrastructure.prisma — built in Phase 0 for exactly this purpose — rather
+// than a second model here. Global: suppression applies platform-wide.
+
+enum SuppressionReason {
+  BOUNCE
+  COMPLAINT
+  MANUAL
+}
+
+model EmailSuppression {
+  id        String            @id @db.Uuid
+  email     String            @unique @db.VarChar(320)
+  reason    SuppressionReason
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("email_suppression")
+}
+
+/// Durable, locally de-duplicated obligation to deliver one message to one
+/// recipient. Provider idempotency is only defence in depth: `sourceKey` is
+/// the authoritative identity and remains effective beyond a provider's
+/// de-duplication window.
+enum EmailDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  SUPPRESSED
+  FAILED
+  BOUNCED
+  COMPLAINED
+  CANCELLED
+}
+
+enum EmailDeliveryAttemptOutcome {
+  STARTED
+  SENT
+  SUPPRESSED
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+}
+
+model EmailDelivery {
+  id                  String              @id @db.Uuid
+  organizationId      String?             @map("organization_id") @db.Uuid
+  recipientUserId     String?             @map("recipient_user_id") @db.Uuid
+  recipientEmail      String              @map("recipient_email") @db.VarChar(320)
+  category            String              @db.VarChar(80)
+  subject             String              @db.VarChar(500)
+  /// Verification/reset bearer tokens are sealed with row-bound AAD at rest.
+  bodyCiphertext      String              @map("body_ciphertext")
+  bodyKeyVersion      Int                 @map("body_key_version")
+  disableTracking     Boolean             @default(false) @map("disable_tracking")
+  sourceType          String              @map("source_type") @db.VarChar(80)
+  sourceKey           String              @unique(map: "email_delivery_source_key_uq") @map("source_key") @db.VarChar(255)
+  contentHash         String              @map("content_hash") @db.Char(64)
+  status              EmailDeliveryStatus @default(PENDING)
+  attempts            Int                 @default(0)
+  providerMessageId   String?             @unique(map: "email_delivery_provider_message_uq") @map("provider_message_id") @db.VarChar(255)
+  lastError           String?             @map("last_error") @db.VarChar(1000)
+  nextAttemptAt       DateTime            @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  leaseExpiresAt      DateTime?           @map("lease_expires_at") @db.Timestamptz(6)
+  lastProviderEventAt DateTime?           @map("last_provider_event_at") @db.Timestamptz(6)
+  sentAt              DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization?          @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "email_delivery_organization_fk")
+  recipient    User?                  @relation(fields: [recipientUserId], references: [id], onDelete: SetNull, map: "email_delivery_recipient_fk")
+  attemptLog   EmailDeliveryAttempt[]
+
+  @@index([organizationId, status, nextAttemptAt], map: "email_delivery_org_status_next_idx")
+  @@index([status, nextAttemptAt], map: "email_delivery_status_next_idx")
+  @@index([recipientUserId, createdAt(sort: Desc)], map: "email_delivery_user_created_idx")
+  @@map("email_delivery")
+}
+
+/// Append-only evidence for every worker-level provider attempt.
+model EmailDeliveryAttempt {
+  id                String                      @id @db.Uuid
+  emailDeliveryId   String                      @map("email_delivery_id") @db.Uuid
+  attemptNumber     Int                         @map("attempt_number")
+  outcome           EmailDeliveryAttemptOutcome @default(STARTED)
+  providerMessageId String?                     @map("provider_message_id") @db.VarChar(255)
+  error             String?                     @db.VarChar(1000)
+  startedAt         DateTime                    @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt        DateTime?                   @map("finished_at") @db.Timestamptz(6)
+
+  delivery EmailDelivery @relation(fields: [emailDeliveryId], references: [id], onDelete: Restrict, map: "email_delivery_attempt_delivery_fk")
+
+  @@unique([emailDeliveryId, attemptNumber], map: "email_delivery_attempt_number_uq")
+  @@index([emailDeliveryId, startedAt(sort: Desc)], map: "email_delivery_attempt_created_idx")
+  @@map("email_delivery_attempt")
+}

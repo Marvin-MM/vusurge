@@ -1,0 +1,48 @@
+// Moderation and abuse (master prompt section 28).
+//
+// A GLOBAL table, for the same reason as `support_ticket`: a reporter's own
+// reports span organizations, and platform staff review across every
+// tenant. Authorization is enforced in the service layer.
+
+enum ContentReportTargetType {
+  ORGANIZATION
+  CHALLENGE
+}
+
+enum ContentReportCategory {
+  SPAM
+  ABUSE
+  INAPPROPRIATE_CONTENT
+  INTELLECTUAL_PROPERTY
+  SAFETY_CONCERN
+  OTHER
+}
+
+enum ContentReportStatus {
+  OPEN
+  UNDER_REVIEW
+  DISMISSED
+  ACTION_TAKEN
+}
+
+model ContentReport {
+  id                   String                  @id @db.Uuid
+  reporterUserId       String                  @map("reporter_user_id") @db.Uuid
+  targetType           ContentReportTargetType @map("target_type")
+  targetId             String                  @map("target_id") @db.Uuid
+  /// Denormalized for platform review convenience — not a foreign key, since
+  /// the target row may belong to either an organization or a challenge table.
+  targetOrganizationId String?                 @map("target_organization_id") @db.Uuid
+  category             ContentReportCategory
+  description          String                  @db.VarChar(2000)
+  status               ContentReportStatus     @default(OPEN)
+  reviewedByUserId     String?                 @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt           DateTime?               @map("reviewed_at") @db.Timestamptz(6)
+  resolutionReason     String?                 @map("resolution_reason") @db.VarChar(2000)
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([reporterUserId, createdAt(sort: Desc)], map: "content_report_reporter_created_idx")
+  @@index([status, createdAt(sort: Desc)], map: "content_report_status_created_idx")
+  @@index([targetType, targetId], map: "content_report_target_idx")
+  @@map("content_report")
+}

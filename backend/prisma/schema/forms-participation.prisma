@@ -1,0 +1,132 @@
+// Dynamic forms and challenge participation.
+//
+// Forms are versioned and immutable once published/used, so a historical
+// response always remains interpretable against the schema it was actually
+// submitted against (master prompt section 11).
+
+enum FormPurpose {
+  ORGANIZATION_JOIN_REQUEST
+  CHALLENGE_PARTICIPATION
+  MENTOR_JUDGE_APPLICATION
+  POST_EVENT_SURVEY
+  PORTFOLIO_STAGE_GATE
+}
+
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  DISQUALIFIED
+}
+
+model FormDefinition {
+  id              String      @id @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  purpose         FormPurpose
+  /// Set only for CHALLENGE_PARTICIPATION / PORTFOLIO_STAGE_GATE forms.
+  challengeId     String?     @map("challenge_id") @db.Uuid
+  name            String      @db.VarChar(200)
+  createdByUserId String      @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  versions  FormVersion[]
+  challenge Challenge?    @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "form_definition_challenge_fk")
+
+  @@unique([id, organizationId], map: "form_definition_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "form_definition_scope_uq")
+  @@index([organizationId, purpose], map: "form_definition_org_purpose_idx")
+  @@index([organizationId, challengeId], map: "form_definition_org_challenge_idx")
+  @@map("form_definition")
+}
+
+/// Immutable once published. A material change to a form creates a new
+/// version rather than editing this row (master prompt section 11).
+model FormVersion {
+  id               String    @id @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  formDefinitionId String    @map("form_definition_id") @db.Uuid
+  challengeId      String?   @map("challenge_id") @db.Uuid
+  version          Int
+  /// JSON Schema, validated by AJV at creation time. Field types are
+  /// restricted to the fixed set in master prompt section 11 — no scripts,
+  /// no arbitrary HTML, no custom validator expressions, no workflow DSL.
+  schema           Json
+  isPublished      Boolean   @default(false) @map("is_published")
+  publishedAt      DateTime? @map("published_at") @db.Timestamptz(6)
+  createdByUserId  String    @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  formDefinition FormDefinition            @relation(fields: [formDefinitionId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "form_version_definition_fk")
+  responses      FormResponse[]
+  joinRequests   OrganizationJoinRequest[] @relation("JoinRequestFormVersion")
+
+  @@unique([formDefinitionId, version], map: "form_version_definition_version_uq")
+  @@unique([id, organizationId], map: "form_version_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "form_version_scope_uq")
+  @@index([organizationId, formDefinitionId, isPublished], map: "form_version_published_idx")
+  @@map("form_version")
+}
+
+/// Submitted responses are immutable. The participation owning workflow may
+/// keep one mutable draft per user/form version until it is atomically
+/// promoted to a submitted response and attached to a participation.
+model FormResponse {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  formVersionId  String   @map("form_version_id") @db.Uuid
+  challengeId    String?  @map("challenge_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  /// Dynamic by design: shape is governed by the immutable form_version.schema
+  /// it was validated against, not by a relational structure.
+  responseData   Json     @map("response_data")
+  isDraft        Boolean  @default(false) @map("is_draft")
+  submittedAt    DateTime @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  formVersion    FormVersion               @relation(fields: [formVersionId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "form_response_version_fk")
+  participations ChallengeParticipation[]
+  joinRequests   OrganizationJoinRequest[] @relation("JoinRequestFormResponse")
+
+  @@unique([id, organizationId], map: "form_response_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "form_response_scope_uq")
+  @@index([organizationId, formVersionId], map: "form_response_org_version_idx")
+  @@index([organizationId, userId], map: "form_response_org_user_idx")
+  @@index([organizationId, challengeId, userId, isDraft], map: "form_response_draft_lookup_idx")
+  @@map("form_response")
+}
+
+model ChallengeParticipation {
+  id              String              @id @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  challengeId     String              @map("challenge_id") @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  status          ParticipationStatus @default(PENDING)
+  /// The terms version the participant accepted at registration.
+  termsVersionId  String?             @map("terms_version_id") @db.Uuid
+  acceptedTermsAt DateTime?           @map("accepted_terms_at") @db.Timestamptz(6)
+  /// The screening application response, when the challenge requires one.
+  formResponseId  String?             @map("form_response_id") @db.Uuid
+  appliedAt       DateTime            @default(now()) @map("applied_at") @db.Timestamptz(6)
+  decidedByUserId String?             @map("decided_by_user_id") @db.Uuid
+  decidedAt       DateTime?           @map("decided_at") @db.Timestamptz(6)
+  /// Shown to the participant.
+  decisionReason  String?             @map("decision_reason") @db.VarChar(2000)
+  /// Organizer-only. Never serialized to the participant.
+  internalNotes   String?             @map("internal_notes") @db.VarChar(4000)
+  withdrawnAt     DateTime?           @map("withdrawn_at") @db.Timestamptz(6)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge    Challenge              @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "participation_challenge_fk")
+  termsVersion ChallengeTermsVersion? @relation(fields: [termsVersionId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "participation_terms_version_fk")
+  formResponse FormResponse?          @relation(fields: [formResponseId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "participation_form_response_fk")
+
+  /// One participation row per user per challenge (master prompt section 31).
+  @@unique([challengeId, userId], map: "participation_challenge_user_uq")
+  @@unique([id, organizationId], map: "participation_id_org_uq")
+  @@index([organizationId, challengeId, status], map: "participation_org_challenge_status_idx")
+  @@index([userId, status], map: "participation_user_status_idx")
+  @@map("challenge_participation")
+}

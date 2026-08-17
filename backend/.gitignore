@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# Secrets: only the documented template is tracked.
+.env
+.env.*
+!.env.example
+
+# Generated OpenAPI output is produced by `bun run openapi:generate`.
+docs/openapi.json
+
+# NOTE: src/generated/prisma is deliberately NOT ignored.
+# The Prisma 7 client is Rust-free TypeScript, and TypedSQL generation needs a
+# live database. Committing the generated output keeps `docker build` and a
+# clean checkout working without a database, and CI regenerates it and fails on
+# any diff, so the committed copy cannot drift.
+# See docs/adr/0019-prisma-7-generated-client-and-typedsql.md.

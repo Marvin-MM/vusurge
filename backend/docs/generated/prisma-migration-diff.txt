@@ -1,0 +1,11 @@
+[*] Changed the `challenge` table
+  [-] Removed index on columns (title)
+
+[*] Changed the `organization` table
+  [-] Removed index on columns (name)
+
+[*] Changed the `skill` table
+  [-] Removed index on columns (name)
+
+[*] Changed the `technology_tag` table
+  [-] Removed index on columns (name)

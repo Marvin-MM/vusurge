@@ -1,0 +1,143 @@
+# Local DEVELOPMENT / TEST stack only.
+#
+# This is NOT a production deployment topology. Production must use managed,
+# highly-available PostgreSQL with automated backups and PITR, managed Redis,
+# and a real S3-compatible object storage provider. See README.md ("Production
+# cautions") and docs/adr/0005-redis-separation-cache-vs-queue.md.
+#
+# Ports are deliberately non-default to avoid colliding with other local stacks.
+
+# NOTE: the project name must stay unique on this machine. Compose identifies a
+# project by name, not by directory, so reusing a name adopts and recreates
+# another project's containers.
+name: innovation-platform-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    container_name: ip-dev-postgres
+    restart: unless-stopped
+    environment:
+      # Local development credentials only. Never used outside this compose file.
+      POSTGRES_USER: ip_bootstrap
+      POSTGRES_PASSWORD: ip_bootstrap_local_dev
+      POSTGRES_DB: innovation_platform
+      # Deterministic collation so index/order behaviour matches CI.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    ports:
+      - "55433:5432"
+    volumes:
+      # postgres:18+ images expect a single mount at /var/lib/postgresql and
+      # place the cluster in a major-version subdirectory beneath it.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ip_bootstrap -d innovation_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Cache / rate-limit Redis. Volatile, TTL-friendly eviction, safe to lose.
+  redis-cache:
+    image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    container_name: ip-dev-redis-cache
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "56380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # BullMQ Redis. MUST use noeviction: BullMQ data structures are not a cache.
+  redis-queue:
+    image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    container_name: ip-dev-redis-queue
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+    ports:
+      - "56381:6379"
+    volumes:
+      - redis-queue-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible private object storage for exports and (when enabled) documents.
+  # Local development substitute for a production S3 provider.
+  minio:
+    image: quay.io/minio/minio:latest@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    container_name: ip-dev-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ip_minio_local
+      MINIO_ROOT_PASSWORD: ip_minio_local_dev_secret
+    ports:
+      - "9110:9000"
+      - "9111:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-provision:
+    image: quay.io/minio/mc:latest@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    container_name: ip-dev-minio-provision
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ip_minio_local ip_minio_local_dev_secret &&
+      mc mb --ignore-existing local/innovation-platform-private &&
+      mc anonymous set none local/innovation-platform-private &&
+      echo 'private bucket ready';
+      "
+
+  # Malware scanner for quarantined user-uploaded documents. The API never
+  # treats a document as downloadable until this service reports it clean.
+  clamav:
+    image: clamav/clamav:1.4.6@sha256:c3bfbf2a2c9abc1fc179e63832a9e8bfac901ede83853e3fa10acf6f1fb5c803
+    container_name: ip-dev-clamav
+    restart: unless-stopped
+    ports:
+      - "53310:3310"
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+
+volumes:
+  postgres-data:
+  redis-queue-data:
+  minio-data:
+  clamav-signatures:

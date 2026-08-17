@@ -1,0 +1,342 @@
+// Organizations: applications, lifecycle, membership, and the three ways a
+// person can come to belong to one (invitation, join code, join request).
+//
+// The organization is the tenant. Every row below either IS an organization or
+// carries `organization_id` as its tenant key.
+
+/// Platform review state of an organization application.
+enum OrganizationApplicationStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// Organization lifecycle.
+///
+/// An organization is operational only when ACTIVE. Suspension is a platform
+/// action that an organization owner cannot override.
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+/// Whether an organization may be discovered publicly.
+///
+/// Deliberately independent of join policy: PUBLIC means "may appear in public
+/// listings", never "anyone may join".
+enum OrganizationVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+/// How a person may come to join an organization.
+enum OrganizationJoinPolicy {
+  INVITE_ONLY
+  CODE_OR_INVITE
+  REQUEST_TO_JOIN
+  /// Reserved for a future release. The API refuses to set it, and the
+  /// eligibility check treats it as denying, so it cannot be activated by a
+  /// direct database write either.
+  OPEN
+}
+
+/// Roles within an organization.
+enum OrganizationRole {
+  ORG_OWNER
+  ORG_ADMIN
+  CHALLENGE_MANAGER
+  MEMBER
+}
+
+/// Membership state. Removed members are retained as INACTIVE so that history,
+/// audit references, and reactivation all remain coherent.
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// Lifecycle of a direct organization invitation.
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+/// Lifecycle of a request to join an organization.
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A request to create an organization on the platform.
+///
+/// Exists before the organization does, so it is NOT tenant-scoped. Approval is
+/// a single transaction that creates the organization, grants the applicant
+/// ownership, writes the audit record, and emits the outbox event.
+model OrganizationApplication {
+  id                    String                        @id @db.Uuid
+  requesterUserId       String                        @map("requester_user_id") @db.Uuid
+  name                  String                        @db.VarChar(200)
+  /// Desired slug. Availability is re-checked at approval time, because
+  /// another application may have claimed it in the meantime.
+  requestedSlug         String                        @map("requested_slug") @db.VarChar(64)
+  organizationType      String                        @map("organization_type") @db.VarChar(60)
+  /// Markdown source, stored verbatim.
+  description           String                        @db.VarChar(4000)
+  websiteUrl            String?                       @map("website_url") @db.VarChar(2048)
+  /// Additional public links, e.g. social profiles. Each validated as https.
+  socialLinks           Json?                         @map("social_links")
+  country               String?                       @db.VarChar(80)
+  region                String?                       @db.VarChar(120)
+  affiliatedInstitution String?                       @map("affiliated_institution") @db.VarChar(200)
+  /// The requester's relationship to the organization they are applying for.
+  requesterRelationship String                        @map("requester_relationship") @db.VarChar(200)
+  requestedVisibility   OrganizationVisibility        @default(PRIVATE) @map("requested_visibility")
+  /// Version of the terms and acceptable-use policy the requester accepted.
+  acceptedTermsVersion  String                        @map("accepted_terms_version") @db.VarChar(40)
+  acceptedTermsAt       DateTime                      @map("accepted_terms_at") @db.Timestamptz(6)
+  /// Metadata describing supporting evidence. Never the evidence itself.
+  verificationEvidence  Json?                         @map("verification_evidence")
+  status                OrganizationApplicationStatus @default(PENDING_REVIEW)
+  submittedAt           DateTime?                     @map("submitted_at") @db.Timestamptz(6)
+  reviewedByUserId      String?                       @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt            DateTime?                     @map("reviewed_at") @db.Timestamptz(6)
+  /// Shown to the applicant.
+  decisionReason        String?                       @map("decision_reason") @db.VarChar(2000)
+  /// Platform-only. Never serialized to the applicant.
+  internalNotes         String?                       @map("internal_notes") @db.VarChar(4000)
+  /// Set when approval creates the organization, linking cause to effect.
+  createdOrganizationId String?                       @map("created_organization_id") @db.Uuid
+  createdAt             DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  requester    User          @relation("ApplicationRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  reviewer     User?         @relation("ApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [createdOrganizationId], references: [id], onDelete: SetNull)
+
+  /// Platform review queue, oldest first.
+  @@index([status, submittedAt], map: "org_application_status_submitted_idx")
+  @@index([requesterUserId, createdAt(sort: Desc)], map: "org_application_requester_idx")
+  @@index([requestedSlug], map: "org_application_slug_idx")
+  @@map("organization_application")
+}
+
+/// A tenant.
+model Organization {
+  id               String                 @id @db.Uuid
+  /// Public URL identifier. Stored lowercase; uniqueness is enforced
+  /// case-insensitively by a functional unique index in migration SQL.
+  slug             String                 @db.VarChar(64)
+  name             String                 @db.VarChar(200)
+  /// Markdown source, stored verbatim.
+  description      String?                @db.VarChar(4000)
+  organizationType String                 @map("organization_type") @db.VarChar(60)
+  websiteUrl       String?                @map("website_url") @db.VarChar(2048)
+  socialLinks      Json?                  @map("social_links")
+  country          String?                @db.VarChar(80)
+  region           String?                @db.VarChar(120)
+  /// Cloudinary asset reference for the logo.
+  logoAssetId      String?                @map("logo_asset_id") @db.Uuid
+  status           OrganizationStatus     @default(ACTIVE)
+  /// PRIVATE by default. Making an organization private must immediately
+  /// remove it and its challenges from public projections.
+  visibility       OrganizationVisibility @default(PRIVATE)
+  suspendedAt      DateTime?              @map("suspended_at") @db.Timestamptz(6)
+  /// Platform-facing justification for a suspension.
+  suspendedReason  String?                @map("suspended_reason") @db.VarChar(2000)
+  archivedAt       DateTime?              @map("archived_at") @db.Timestamptz(6)
+  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  settings          OrganizationSettings?
+  memberships       OrganizationMembership[]
+  invitations       OrganizationInvitation[]
+  joinCodes         OrganizationJoinCode[]
+  joinRequests      OrganizationJoinRequest[]
+  applications      OrganizationApplication[]
+  mediaAssets       MediaAsset[]
+  storedObjects     StoredObject[]
+  fileAssets        FileAsset[]
+  emailDeliveries   EmailDelivery[]
+  limits            OrganizationLimit?
+  reminderSchedules ReminderSchedule[]
+  analyticsRollups  AnalyticsDailyRollup[]
+
+  /// Public directory query path: only ACTIVE + PUBLIC organizations appear.
+  @@index([status, visibility], map: "organization_status_visibility_idx")
+  @@index([createdAt(sort: Desc)], map: "organization_created_idx")
+  @@map("organization")
+}
+
+/// Per-organization configuration.
+///
+/// Separated from the profile so that changing a description and changing the
+/// join policy are different operations with different permissions — the
+/// generic profile PATCH must never be able to alter security-relevant state.
+model OrganizationSettings {
+  organizationId                  String                 @id @map("organization_id") @db.Uuid
+  joinPolicy                      OrganizationJoinPolicy @default(INVITE_ONLY) @map("join_policy")
+  /// Restricts join-code and join-request eligibility to these email domains.
+  allowedEmailDomains             String[]               @map("allowed_email_domains")
+  /// Whether members may see the full member directory.
+  memberDirectoryVisibleToMembers Boolean                @default(true) @map("member_directory_visible_to_members")
+  /// Master switch for the public project gallery. Off by default: publishing
+  /// a submission additionally requires per-challenge policy and participant
+  /// consent.
+  publicProjectGalleryEnabled     Boolean                @default(false) @map("public_project_gallery_enabled")
+  /// Whether approved aggregate metrics may appear on public projections.
+  publicMetricsEnabled            Boolean                @default(false) @map("public_metrics_enabled")
+  /// Contact address shown on public pages. Never a member's private email.
+  publicContactEmail              String?                @map("public_contact_email") @db.VarChar(254)
+  createdAt                       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+/// A user's membership of an organization.
+model OrganizationMembership {
+  id              String           @id @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  role            OrganizationRole @default(MEMBER)
+  status          MembershipStatus @default(ACTIVE)
+  /// How this membership came about, for audit and support.
+  source          String           @default("INVITATION") @db.VarChar(40)
+  joinedAt        DateTime         @default(now()) @map("joined_at") @db.Timestamptz(6)
+  removedAt       DateTime?        @map("removed_at") @db.Timestamptz(6)
+  removedByUserId String?          @map("removed_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One membership row per user per organization. Removal sets INACTIVE
+  /// rather than deleting, so reactivation and history stay coherent.
+  @@unique([organizationId, userId], map: "membership_org_user_uq")
+  /// A composite unique key on (id, organizationId) lets child tables declare a
+  /// composite foreign key, so PostgreSQL rejects a cross-tenant reference.
+  @@unique([id, organizationId], map: "membership_id_org_uq")
+  /// "Which organizations does this user belong to" — the /me/organizations path.
+  @@index([userId, status], map: "membership_user_status_idx")
+  /// Last-owner protection counts active owners through this index.
+  @@index([organizationId, role, status], map: "membership_org_role_status_idx")
+  @@map("organization_membership")
+}
+
+/// A direct, optionally email-bound invitation to join an organization.
+///
+/// Only the token HASH is stored. A database disclosure must not hand an
+/// attacker a set of working invitations.
+model OrganizationInvitation {
+  id               String           @id @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  /// SHA-256 of the invitation token. The token itself is shown exactly once,
+  /// in the invitation email, and is never recoverable from the API.
+  tokenHash        String           @unique(map: "invitation_token_hash_uq") @map("token_hash") @db.Char(64)
+  /// When set, only this address may accept. Compared case-insensitively
+  /// against the accepting user's verified email.
+  email            String?          @db.VarChar(254)
+  role             OrganizationRole @default(MEMBER)
+  status           InvitationStatus @default(PENDING)
+  expiresAt        DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdByUserId  String           @map("created_by_user_id") @db.Uuid
+  acceptedByUserId String?          @map("accepted_by_user_id") @db.Uuid
+  acceptedAt       DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  revokedAt        DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  revokedByUserId  String?          @map("revoked_by_user_id") @db.Uuid
+  /// Number of times the invitation email has been re-sent, for rate limiting.
+  resendCount      Int              @default(0) @map("resend_count")
+  lastSentAt       DateTime?        @map("last_sent_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation("InvitationCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  acceptor     User?        @relation("InvitationAcceptor", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt(sort: Desc)], map: "invitation_org_status_idx")
+  @@index([email, status], map: "invitation_email_status_idx")
+  /// Retention sweep for expired invitations.
+  @@index([expiresAt], map: "invitation_expires_idx")
+  @@map("organization_invitation")
+}
+
+/// A shareable, high-entropy code that grants membership on redemption.
+///
+/// Only the hash is stored: there is deliberately no endpoint that reveals a
+/// code after creation. The plaintext is returned exactly once, at creation.
+model OrganizationJoinCode {
+  id                  String           @id @db.Uuid
+  organizationId      String           @map("organization_id") @db.Uuid
+  /// SHA-256 of the normalised code.
+  codeHash            String           @unique(map: "join_code_hash_uq") @map("code_hash") @db.Char(64)
+  /// A short non-secret label so admins can tell codes apart in the UI.
+  label               String?          @db.VarChar(120)
+  /// Normally MEMBER. Elevated roles via join code are refused by the service.
+  role                OrganizationRole @default(MEMBER)
+  expiresAt           DateTime         @map("expires_at") @db.Timestamptz(6)
+  /// Null means unlimited. Enforced in the same transaction as the membership
+  /// insert, so concurrent redemptions cannot exceed it.
+  maxUses             Int?             @map("max_uses")
+  useCount            Int              @default(0) @map("use_count")
+  /// Optional restriction, e.g. ["university.edu"].
+  allowedEmailDomains String[]         @map("allowed_email_domains")
+  revokedAt           DateTime?        @map("revoked_at") @db.Timestamptz(6)
+  revokedByUserId     String?          @map("revoked_by_user_id") @db.Uuid
+  createdByUserId     String           @map("created_by_user_id") @db.Uuid
+  lastUsedAt          DateTime?        @map("last_used_at") @db.Timestamptz(6)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, revokedAt, expiresAt], map: "join_code_org_active_idx")
+  @@map("organization_join_code")
+}
+
+/// A user's request to join an organization that uses REQUEST_TO_JOIN.
+model OrganizationJoinRequest {
+  id               String            @id @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+  userId           String            @map("user_id") @db.Uuid
+  status           JoinRequestStatus @default(PENDING)
+  /// Optional free-text introduction from the requester.
+  message          String?           @db.VarChar(2000)
+  /// Response to the organization's optional versioned application form.
+  formVersionId    String?           @map("form_version_id") @db.Uuid
+  formResponseId   String?           @map("form_response_id") @db.Uuid
+  reviewedByUserId String?           @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime?         @map("reviewed_at") @db.Timestamptz(6)
+  /// Shown to the requester.
+  decisionReason   String?           @map("decision_reason") @db.VarChar(2000)
+  /// Organizer-only. Never serialized to the requester.
+  internalNotes    String?           @map("internal_notes") @db.VarChar(4000)
+  withdrawnAt      DateTime?         @map("withdrawn_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requester    User          @relation("JoinRequester", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer     User?         @relation("JoinRequestReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  formVersion  FormVersion?  @relation("JoinRequestFormVersion", fields: [formVersionId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "join_request_form_version_fk")
+  formResponse FormResponse? @relation("JoinRequestFormResponse", fields: [formResponseId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "join_request_form_response_fk")
+
+  /// Admin review queue.
+  @@index([organizationId, status, createdAt(sort: Desc)], map: "join_request_org_status_idx")
+  @@index([userId, status], map: "join_request_user_status_idx")
+  /// At most one PENDING request per user per organization; enforced by a
+  /// partial unique index in migration SQL.
+  @@map("organization_join_request")
+}

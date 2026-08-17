@@ -1,0 +1,179 @@
+// Innovation portfolio (master prompt section 26). Tenant-scoped like every
+// other organization-owned business table.
+
+enum InnovationStage {
+  DISCOVERY
+  VALIDATION
+  PROTOTYPE
+  PILOT
+  INCUBATION
+  SCALE
+  PAUSED
+  CLOSED
+}
+
+enum InnovationRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum InnovationMilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  AT_RISK
+  CANCELLED
+}
+
+enum InnovationEvidenceType {
+  LINK
+  MEDIA_ASSET
+  NOTE
+}
+
+enum InnovationMetricType {
+  NUMBER
+  PERCENTAGE
+  CURRENCY
+}
+
+/// An innovation item either originates from a finalized submission
+/// (`sourceSubmissionId`) or is created directly for continuous ideation.
+/// `@@unique([sourceSubmissionId])` is what makes "one promotion per
+/// submission by default" true at the database level, not just in service
+/// logic — a second promote-to-innovation call for the same submission
+/// fails on the constraint, not on a race-prone existence check.
+model Innovation {
+  id                   String               @id @db.Uuid
+  organizationId       String               @map("organization_id") @db.Uuid
+  sourceChallengeId    String?              @map("source_challenge_id") @db.Uuid
+  sourceSubmissionId   String?              @map("source_submission_id") @db.Uuid
+  title                String               @db.VarChar(200)
+  opportunityStatement String?              @map("opportunity_statement")
+  thesis               String?
+  ownerUserId          String?              @map("owner_user_id") @db.Uuid
+  ownerTeamName        String?              @map("owner_team_name") @db.VarChar(200)
+  strategicThemes      String[]             @map("strategic_themes")
+  expectedImpact       String?              @map("expected_impact")
+  riskLevel            InnovationRiskLevel? @map("risk_level")
+  beneficiaries        String?              @db.VarChar(2000)
+  stage                InnovationStage      @default(DISCOVERY)
+  resourceNotes        String?              @map("resource_notes")
+  nextReviewDate       DateTime?            @map("next_review_date") @db.Date
+  /// Organizer-approved for the public portfolio projection. Defaults to
+  /// false: an innovation is internal-only until an organizer opts it in.
+  publicVisible        Boolean              @default(false) @map("public_visible")
+  createdByUserId      String               @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge  Challenge?  @relation(fields: [sourceChallengeId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "innovation_challenge_fk")
+  submission Submission? @relation(fields: [sourceSubmissionId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "innovation_submission_fk")
+
+  stageHistory      InnovationStageHistoryEntry[]
+  milestones        InnovationMilestone[]
+  evidence          InnovationEvidence[]
+  metrics           InnovationMetric[]
+  reminderSchedules ReminderSchedule[]
+
+  @@unique([sourceSubmissionId], map: "innovation_source_submission_uq")
+  @@unique([id, organizationId], map: "innovation_id_org_uq")
+  @@index([organizationId, stage], map: "innovation_org_stage_idx")
+  @@index([organizationId, nextReviewDate], map: "innovation_org_next_review_idx")
+  @@map("innovation")
+}
+
+/// Append-only stage-gate history. A transition is always recorded here in
+/// the same transaction that changes `Innovation.stage` — never inferred
+/// after the fact from `updatedAt`.
+model InnovationStageHistoryEntry {
+  id                  String           @id @db.Uuid
+  organizationId      String           @map("organization_id") @db.Uuid
+  innovationId        String           @map("innovation_id") @db.Uuid
+  previousStage       InnovationStage? @map("previous_stage")
+  newStage            InnovationStage  @map("new_stage")
+  decision            String           @db.VarChar(2000)
+  decisionMakerUserId String           @map("decision_maker_user_id") @db.Uuid
+  /// Free-form references (evidence IDs, URLs) cited for this decision.
+  evidenceRefs        String[]         @map("evidence_refs")
+  notes               String?          @db.VarChar(2000)
+  nextReviewDate      DateTime?        @map("next_review_date") @db.Date
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  innovation Innovation @relation(fields: [innovationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "innovation_stage_history_innovation_fk")
+
+  @@index([organizationId, innovationId, createdAt(sort: Desc)], map: "innovation_stage_history_org_innovation_idx")
+  @@map("innovation_stage_history")
+}
+
+model InnovationMilestone {
+  id             String                    @id @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  innovationId   String                    @map("innovation_id") @db.Uuid
+  title          String                    @db.VarChar(200)
+  description    String?                   @db.VarChar(2000)
+  status         InnovationMilestoneStatus @default(PLANNED)
+  dueDate        DateTime?                 @map("due_date") @db.Date
+  completedAt    DateTime?                 @map("completed_at") @db.Timestamptz(6)
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  innovation Innovation @relation(fields: [innovationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "innovation_milestone_innovation_fk")
+
+  @@index([organizationId, innovationId], map: "innovation_milestone_org_innovation_idx")
+  @@map("innovation_milestone")
+}
+
+model InnovationEvidence {
+  id             String                 @id @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  innovationId   String                 @map("innovation_id") @db.Uuid
+  type           InnovationEvidenceType
+  title          String                 @db.VarChar(200)
+  url            String?                @db.VarChar(2048)
+  mediaAssetId   String?                @map("media_asset_id") @db.Uuid
+  note           String?                @db.VarChar(2000)
+  addedByUserId  String                 @map("added_by_user_id") @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  innovation Innovation @relation(fields: [innovationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "innovation_evidence_innovation_fk")
+
+  @@index([organizationId, innovationId], map: "innovation_evidence_org_innovation_idx")
+  @@map("innovation_evidence")
+}
+
+model InnovationMetric {
+  id             String               @id @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  innovationId   String               @map("innovation_id") @db.Uuid
+  name           String               @db.VarChar(200)
+  metricType     InnovationMetricType @map("metric_type")
+  unit           String?              @db.VarChar(40)
+  targetValue    Decimal?             @map("target_value") @db.Decimal(18, 4)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  innovation   Innovation                    @relation(fields: [innovationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "innovation_metric_innovation_fk")
+  measurements InnovationMetricMeasurement[]
+
+  @@unique([id, organizationId], map: "innovation_metric_id_org_uq")
+  @@index([organizationId, innovationId], map: "innovation_metric_org_innovation_idx")
+  @@map("innovation_metric")
+}
+
+model InnovationMetricMeasurement {
+  id               String   @id @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  metricId         String   @map("metric_id") @db.Uuid
+  value            Decimal  @db.Decimal(18, 4)
+  measuredAt       DateTime @map("measured_at") @db.Timestamptz(6)
+  note             String?  @db.VarChar(1000)
+  recordedByUserId String   @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  metric InnovationMetric @relation(fields: [metricId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "innovation_metric_measurement_metric_fk")
+
+  @@index([organizationId, metricId, measuredAt(sort: Desc)], map: "innovation_metric_measurement_org_metric_idx")
+  @@map("innovation_metric_measurement")
+}

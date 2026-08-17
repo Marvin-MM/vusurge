@@ -1,0 +1,138 @@
+// Challenge-scoped teams, team invitations, and the matchmaking board
+// (master prompt section 14). Teams are challenge-scoped only — no
+// long-lived platform-global teams in this release.
+
+enum TeamMemberRole {
+  CAPTAIN
+  MEMBER
+}
+
+enum TeamInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+model ChallengeTeam {
+  id              String   @id @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  challengeId     String   @map("challenge_id") @db.Uuid
+  trackId         String?  @map("track_id") @db.Uuid
+  name            String   @db.VarChar(120)
+  /// True once the team formed from an implicit solo registration rather
+  /// than an explicit team-creation call (master prompt section 14).
+  isSolo          Boolean  @default(false) @map("is_solo")
+  /// Optimistic-concurrency guard; capacity changes also take a row lock
+  /// (`SELECT ... FOR UPDATE`) rather than relying on this alone, since the
+  /// capacity race is a genuine concurrent-insert problem, not a lost update.
+  version         Int      @default(1)
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge        Challenge             @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "team_challenge_fk")
+  track            ChallengeTrack?       @relation(fields: [trackId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "team_track_fk")
+  members          ChallengeTeamMember[]
+  invitations      TeamInvitation[]
+  submissions      Submission[]
+  matchmakingPosts MatchmakingPost[]
+
+  @@unique([id, organizationId], map: "team_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "team_scope_uq")
+  @@index([organizationId, challengeId], map: "team_org_challenge_idx")
+  @@map("challenge_team")
+}
+
+/// One row per (challenge, user): a participant belongs to at most one team
+/// per challenge at a time (master prompt section 14, "one active team per
+/// challenge per participant by default").
+model ChallengeTeamMember {
+  id             String         @id @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  challengeId    String         @map("challenge_id") @db.Uuid
+  teamId         String         @map("team_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  role           TeamMemberRole @default(MEMBER)
+  joinedAt       DateTime       @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  team ChallengeTeam @relation(fields: [teamId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Cascade, map: "team_member_team_fk")
+  user User          @relation(fields: [userId], references: [id], onDelete: Restrict, map: "team_member_user_fk")
+
+  @@unique([challengeId, userId], map: "team_member_challenge_user_uq")
+  @@unique([id, organizationId], map: "team_member_id_org_uq")
+  @@index([organizationId, teamId], map: "team_member_org_team_idx")
+  @@map("challenge_team_member")
+}
+
+/// Hashed single-use expiring token, accepted like an organization invitation.
+model TeamInvitation {
+  id              String               @id @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  challengeId     String               @map("challenge_id") @db.Uuid
+  teamId          String               @map("team_id") @db.Uuid
+  invitedUserId   String               @map("invited_user_id") @db.Uuid
+  tokenHash       String               @unique @map("token_hash") @db.VarChar(128)
+  status          TeamInvitationStatus @default(PENDING)
+  invitedByUserId String               @map("invited_by_user_id") @db.Uuid
+  expiresAt       DateTime             @map("expires_at") @db.Timestamptz(6)
+  respondedAt     DateTime?            @map("responded_at") @db.Timestamptz(6)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  team    ChallengeTeam @relation(fields: [teamId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Cascade, map: "team_invitation_team_fk")
+  invitee User          @relation("TeamInvitationInvitee", fields: [invitedUserId], references: [id], onDelete: Restrict, map: "team_invitation_invitee_fk")
+  inviter User          @relation("TeamInvitationInviter", fields: [invitedByUserId], references: [id], onDelete: Restrict, map: "team_invitation_inviter_fk")
+
+  @@unique([id, organizationId], map: "team_invitation_id_org_uq")
+  @@index([organizationId, teamId], map: "team_invitation_org_team_idx")
+  @@index([organizationId, invitedUserId, status], map: "team_invitation_org_invitee_idx")
+  @@map("team_invitation")
+}
+
+/// A challenge-scoped matchmaking board post (master prompt section 14.1).
+model MatchmakingPost {
+  id                String   @id @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  challengeId       String   @map("challenge_id") @db.Uuid
+  posterUserId      String   @map("poster_user_id") @db.Uuid
+  /// Set when posting on behalf of an existing team looking for more members.
+  posterTeamId      String?  @map("poster_team_id") @db.Uuid
+  skillsOffered     String[] @map("skills_offered")
+  rolesSought       String[] @map("roles_sought")
+  message           String   @db.VarChar(2000)
+  availability      String?  @db.VarChar(500)
+  /// Free text the poster chooses to share (e.g. "DM me on the platform").
+  /// Never populated from the account's private email/phone.
+  contactPreference String?  @map("contact_preference") @db.VarChar(500)
+  isOpen            Boolean  @default(true) @map("is_open")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge             @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "matchmaking_post_challenge_fk")
+  poster    User                  @relation("MatchmakingPoster", fields: [posterUserId], references: [id], onDelete: Restrict, map: "matchmaking_post_user_fk")
+  team      ChallengeTeam?        @relation(fields: [posterTeamId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "matchmaking_post_team_fk")
+  interests MatchmakingInterest[]
+
+  @@unique([id, organizationId], map: "matchmaking_post_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "matchmaking_post_scope_uq")
+  @@index([organizationId, challengeId, isOpen], map: "matchmaking_post_org_challenge_idx")
+  @@map("matchmaking_post")
+}
+
+/// Records an in-platform expression of interest in a matchmaking post.
+model MatchmakingInterest {
+  id               String   @id @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  postId           String   @map("post_id") @db.Uuid
+  interestedUserId String   @map("interested_user_id") @db.Uuid
+  message          String?  @db.VarChar(1000)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post MatchmakingPost @relation(fields: [postId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "matchmaking_interest_post_fk")
+  user User            @relation(fields: [interestedUserId], references: [id], onDelete: Restrict, map: "matchmaking_interest_user_fk")
+
+  @@unique([postId, interestedUserId], map: "matchmaking_interest_post_user_uq")
+  @@index([organizationId, postId], map: "matchmaking_interest_org_post_idx")
+  @@map("matchmaking_interest")
+}

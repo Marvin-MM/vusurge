@@ -1,0 +1,295 @@
+// Challenge domain: the challenge itself, its schedule history, tracks,
+// prizes, sponsors, versioned terms, and consent records.
+//
+// All tenant-scoped: every table carries organization_id even where it could
+// be inferred through challenge_id, so composite foreign keys can reject a
+// cross-tenant reference at the database level (master prompt section 6.2).
+
+enum ChallengeVisibility {
+  ORG_MEMBERS
+  PUBLIC
+  UNLISTED
+}
+
+enum ChallengeParticipationPolicy {
+  ORG_MEMBERS_ONLY
+  APPROVED_CHALLENGE_PARTICIPANTS
+  OPEN_AUTHENTICATED
+}
+
+/// Administrative lifecycle. The authoritative eligibility check for
+/// time-sensitive actions (registration, submission) ALWAYS reads database
+/// timestamps directly rather than trusting this column, which may lag a
+/// scheduled transition by up to one reconciliation interval (master prompt
+/// section 10.4).
+enum ChallengeStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  JUDGING
+  RESULTS_READY
+  RESULTS_PUBLISHED
+  ARCHIVED
+  CANCELLED
+}
+
+model Challenge {
+  id             String              @id @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  title          String              @db.VarChar(200)
+  slug           String              @db.VarChar(64)
+  summary        String?             @db.VarChar(500)
+  /// Markdown source, stored and returned verbatim.
+  description    String?
+  coverAssetId   String?             @map("cover_asset_id") @db.Uuid
+  visibility     ChallengeVisibility @default(ORG_MEMBERS)
+  status         ChallengeStatus     @default(DRAFT)
+  publishedAt    DateTime?           @map("published_at") @db.Timestamptz(6)
+
+  registrationOpenAt     DateTime? @map("registration_open_at") @db.Timestamptz(6)
+  registrationCloseAt    DateTime? @map("registration_close_at") @db.Timestamptz(6)
+  submissionOpenAt       DateTime? @map("submission_open_at") @db.Timestamptz(6)
+  submissionDeadline     DateTime? @map("submission_deadline") @db.Timestamptz(6)
+  judgingStartAt         DateTime? @map("judging_start_at") @db.Timestamptz(6)
+  judgingEndAt           DateTime? @map("judging_end_at") @db.Timestamptz(6)
+  resultsPublishedAt     DateTime? @map("results_published_at") @db.Timestamptz(6)
+  /// Administrative judging/results workflow timestamps (master prompt
+  /// section 17.4), distinct from the scheduling fields above.
+  judgingFinalizedAt     DateTime? @map("judging_finalized_at") @db.Timestamptz(6)
+  resultsFinalizedAt     DateTime? @map("results_finalized_at") @db.Timestamptz(6)
+  resultsRetractedAt     DateTime? @map("results_retracted_at") @db.Timestamptz(6)
+  feedbackReleasedAt     DateTime? @map("feedback_released_at") @db.Timestamptz(6)
+  /// Set by a platform moderation action (master prompt section 28). Hidden
+  /// challenges must be excluded from public projections; organizer-facing
+  /// views still show them, annotated as hidden.
+  moderationHiddenAt     DateTime? @map("moderation_hidden_at") @db.Timestamptz(6)
+  moderationHiddenReason String?   @map("moderation_hidden_reason") @db.VarChar(2000)
+
+  /// Display/scheduling context only; every stored instant is timestamptz UTC.
+  displayTimeZone String @default("UTC") @map("display_time_zone") @db.VarChar(64)
+
+  minTeamSize              Int                          @default(1) @map("min_team_size")
+  maxTeamSize              Int                          @default(1) @map("max_team_size")
+  soloParticipationAllowed Boolean                      @default(true) @map("solo_participation_allowed")
+  screeningRequired        Boolean                      @default(false) @map("screening_required")
+  participationPolicy      ChallengeParticipationPolicy @default(ORG_MEMBERS_ONLY) @map("participation_policy")
+
+  /// Free-form description of what a submission must include, shown to
+  /// participants. Structural requirements (which fields are mandatory) are
+  /// enforced in the submissions module against a fixed schema, not this text.
+  submissionRequirements String? @map("submission_requirements")
+
+  publicProjectPublicationEnabled Boolean @default(false) @map("public_project_publication_enabled")
+  blindJudgingEnabled             Boolean @default(false) @map("blind_judging_enabled")
+
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  /// Optimistic-concurrency guard for the reschedule/extend/reopen actions.
+  version         Int      @default(1)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  scheduleChanges               ChallengeScheduleChange[]
+  tracks                        ChallengeTrack[]
+  prizes                        ChallengePrize[]
+  sponsors                      ChallengeSponsor[]
+  termsVersions                 ChallengeTermsVersion[]
+  participations                ChallengeParticipation[]
+  announcements                 Announcement[]
+  faqs                          Faq[]
+  teams                         ChallengeTeam[]
+  matchmakingPosts              MatchmakingPost[]
+  submissions                   Submission[]
+  staffInvitations              ChallengeStaffInvitation[]
+  staffAssignments              ChallengeStaffAssignment[]
+  rubrics                       Rubric[]
+  judgeAssignments              JudgeAssignment[]
+  submissionResults             SubmissionResult[]
+  resultSnapshots               ResultSnapshot[]
+  innovations                   Innovation[]
+  mediaAssets                   MediaAsset[]
+  storedObjects                 StoredObject[]
+  fileAssets                    FileAsset[]
+  formDefinitions               FormDefinition[]
+  submissionRequirementVersions ChallengeSubmissionRequirementVersion[]
+  reminderSchedules             ReminderSchedule[]
+  analyticsRollups              AnalyticsDailyRollup[]
+
+  /// Unique per organization, case-insensitive via a functional index added
+  /// in migration SQL.
+  @@unique([organizationId, slug], map: "challenge_org_slug_uq")
+  /// Lets child tables declare a composite FK against (id, organizationId).
+  @@unique([id, organizationId], map: "challenge_id_org_uq")
+  @@index([organizationId, status], map: "challenge_org_status_idx")
+  @@index([organizationId, submissionDeadline], map: "challenge_org_deadline_idx")
+  @@map("challenge")
+}
+
+/// Versioned structural validation policy used by submission finalization.
+/// `submissionRequirements` on Challenge remains organizer-facing guidance;
+/// this row is the authoritative, immutable machine-enforced snapshot.
+model ChallengeSubmissionRequirementVersion {
+  id                         String    @id @db.Uuid
+  organizationId             String    @map("organization_id") @db.Uuid
+  challengeId                String    @map("challenge_id") @db.Uuid
+  version                    Int
+  guidance                   String?
+  requireTitle               Boolean   @default(true) @map("require_title")
+  requireTagline             Boolean   @default(false) @map("require_tagline")
+  requireProblemStatement    Boolean   @default(true) @map("require_problem_statement")
+  requireSolutionDescription Boolean   @default(true) @map("require_solution_description")
+  requireImpactBeneficiaries Boolean   @default(false) @map("require_impact_beneficiaries")
+  requireTechnologyTags      Boolean   @default(false) @map("require_technology_tags")
+  requireRepositoryUrl       Boolean   @default(false) @map("require_repository_url")
+  requireDemoUrl             Boolean   @default(false) @map("require_demo_url")
+  requirePitchVideoUrl       Boolean   @default(false) @map("require_pitch_video_url")
+  requirePresentationAsset   Boolean   @default(false) @map("require_presentation_asset")
+  requireSupportingLinks     Boolean   @default(false) @map("require_supporting_links")
+  requirePublicationConsent  Boolean   @default(false) @map("require_publication_consent")
+  minScreenshots             Int       @default(0) @map("min_screenshots")
+  maxScreenshots             Int       @default(4) @map("max_screenshots")
+  isActive                   Boolean   @default(true) @map("is_active")
+  lockedAt                   DateTime? @map("locked_at") @db.Timestamptz(6)
+  createdByUserId            String    @map("created_by_user_id") @db.Uuid
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "submission_requirement_challenge_fk")
+  creator   User      @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, map: "submission_requirement_creator_fk")
+
+  @@unique([challengeId, version], map: "submission_requirement_challenge_version_uq")
+  @@unique([id, organizationId, challengeId], map: "submission_requirement_scope_uq")
+  @@index([organizationId, challengeId, isActive], map: "submission_requirement_active_idx")
+  @@map("challenge_submission_requirement_version")
+}
+
+/// A schedule or lifecycle change, recorded as domain history distinct from
+/// (but linked to) the audit trail — this is queryable challenge-scoped
+/// history, e.g. "show every deadline extension for this challenge."
+model ChallengeScheduleChange {
+  id             String    @id @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  challengeId    String    @map("challenge_id") @db.Uuid
+  /// e.g. "submissionDeadline", "registrationCloseAt".
+  field          String    @db.VarChar(60)
+  previousValue  DateTime? @map("previous_value") @db.Timestamptz(6)
+  newValue       DateTime? @map("new_value") @db.Timestamptz(6)
+  reason         String    @db.VarChar(1000)
+  actorUserId    String    @map("actor_user_id") @db.Uuid
+  requestId      String?   @map("request_id") @db.VarChar(64)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "schedule_change_challenge_fk")
+
+  @@index([organizationId, challengeId, createdAt(sort: Desc)], map: "schedule_change_challenge_idx")
+  @@map("challenge_schedule_change")
+}
+
+model ChallengeTrack {
+  id             String    @id @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  challengeId    String    @map("challenge_id") @db.Uuid
+  name           String    @db.VarChar(120)
+  description    String?   @db.VarChar(2000)
+  /// Archived tracks are hidden from selection but retained for referential
+  /// integrity once a finalized submission references them.
+  archivedAt     DateTime? @map("archived_at") @db.Timestamptz(6)
+  displayOrder   Int       @default(0) @map("display_order")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge   Challenge          @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "track_challenge_fk")
+  teams       ChallengeTeam[]
+  submissions Submission[]
+  results     SubmissionResult[]
+
+  @@unique([challengeId, name], map: "track_challenge_name_uq")
+  @@unique([id, organizationId], map: "track_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "track_scope_uq")
+  @@index([organizationId, challengeId], map: "track_org_challenge_idx")
+  @@map("challenge_track")
+}
+
+/// Informational only. No payments, wallets, or payouts (master prompt 10.6).
+model ChallengePrize {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  challengeId    String   @map("challenge_id") @db.Uuid
+  title          String   @db.VarChar(120)
+  description    String?  @db.VarChar(2000)
+  /// Free-text value representation, e.g. "$500" or "Mentorship package" —
+  /// deliberately not a numeric currency column, since this is not billing.
+  valueLabel     String?  @map("value_label") @db.VarChar(120)
+  trackId        String?  @map("track_id") @db.Uuid
+  displayOrder   Int      @default(0) @map("display_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "prize_challenge_fk")
+
+  @@index([organizationId, challengeId], map: "prize_org_challenge_idx")
+  @@map("challenge_prize")
+}
+
+model ChallengeSponsor {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  challengeId    String   @map("challenge_id") @db.Uuid
+  name           String   @db.VarChar(120)
+  websiteUrl     String?  @map("website_url") @db.VarChar(2048)
+  logoAssetId    String?  @map("logo_asset_id") @db.Uuid
+  tier           String?  @db.VarChar(60)
+  displayOrder   Int      @default(0) @map("display_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "sponsor_challenge_fk")
+
+  @@index([organizationId, challengeId], map: "sponsor_org_challenge_idx")
+  @@map("challenge_sponsor")
+}
+
+/// An immutable, versioned terms document a challenge requires participants
+/// to accept (IP, confidentiality, publication permission, etc — master
+/// prompt section 16). Never mutated in place; a material change creates a
+/// new version.
+model ChallengeTermsVersion {
+  id              String    @id @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  challengeId     String    @map("challenge_id") @db.Uuid
+  version         Int
+  /// Markdown source, immutable once created.
+  content         String
+  isActive        Boolean   @default(false) @map("is_active")
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  challenge          Challenge                @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "terms_version_challenge_fk")
+  consentRecords     ConsentRecord[]
+  participations     ChallengeParticipation[]
+  submissionVersions SubmissionVersion[]
+
+  @@unique([challengeId, version], map: "terms_version_challenge_version_uq")
+  @@unique([id, organizationId], map: "terms_version_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "terms_version_scope_uq")
+  @@index([organizationId, challengeId, isActive], map: "terms_version_active_idx")
+  @@map("challenge_terms_version")
+}
+
+/// A user's acceptance of one specific, immutable terms version.
+model ConsentRecord {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  termsVersionId String   @map("terms_version_id") @db.Uuid
+  /// Where consent was captured, e.g. "challenge_registration".
+  context        String   @db.VarChar(60)
+  acceptedAt     DateTime @default(now()) @map("accepted_at") @db.Timestamptz(6)
+
+  termsVersion ChallengeTermsVersion @relation(fields: [termsVersionId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "consent_terms_version_fk")
+
+  @@unique([userId, termsVersionId], map: "consent_user_terms_uq")
+  @@index([organizationId, termsVersionId], map: "consent_org_terms_idx")
+  @@map("consent_record")
+}

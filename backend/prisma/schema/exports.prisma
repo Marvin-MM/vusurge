@@ -1,0 +1,41 @@
+// Asynchronous, permission-checked, audited data exports (master prompt
+// section 24.1). Tenant-scoped like ordinary business tables — an export
+// always belongs to exactly one organization.
+
+enum ExportType {
+  ORGANIZATION_MEMBERS
+  ORGANIZATION_SUBMISSIONS
+  ORGANIZATION_PARTICIPATION
+  CHALLENGE_RESULTS
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model DataExport {
+  id                String       @id @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  requestedByUserId String       @map("requested_by_user_id") @db.Uuid
+  exportType        ExportType   @map("export_type")
+  /// Validated per `exportType` in the service layer — never an arbitrary
+  /// query definition (master prompt: "do not accept arbitrary SQL-like
+  /// export definitions").
+  filters           Json         @default("{}")
+  status            ExportStatus @default(PENDING)
+  /// Private object-storage key once generated. Never a public URL.
+  storageKey        String?      @map("storage_key") @db.VarChar(500)
+  fileSizeBytes     Int?         @map("file_size_bytes")
+  rowCount          Int?         @map("row_count")
+  failureReason     String?      @map("failure_reason") @db.VarChar(1000)
+  expiresAt         DateTime?    @map("expires_at") @db.Timestamptz(6)
+  completedAt       DateTime?    @map("completed_at") @db.Timestamptz(6)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([id, organizationId], map: "data_export_id_org_uq")
+  @@index([organizationId, status, createdAt(sort: Desc)], map: "data_export_org_status_idx")
+  @@map("data_export")
+}

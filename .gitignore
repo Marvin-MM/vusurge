@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+coverage/
+.DS_Store
+*.log
+
+# environment / secrets — never commit
+.env
+.env.*
+!.env.example
+
+# local infrastructure volumes
+.docker-data/
+
+# editor
+.idea/
+.vscode/

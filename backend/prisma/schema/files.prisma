@@ -1,0 +1,103 @@
+enum StoredObjectStatus {
+  PENDING_UPLOAD
+  QUARANTINED
+  CLEAN
+  INFECTED
+  FAILED
+  PENDING_DELETION
+  DELETED
+}
+
+enum FileAssetPurpose {
+  SUBMISSION_PRESENTATION
+  SUPPORT_ATTACHMENT
+  PORTFOLIO_EVIDENCE
+}
+
+enum FileAssetStatus {
+  ACTIVE
+  PENDING_DELETION
+  DELETED
+}
+
+model StoredObject {
+  id                  String             @id @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  challengeId         String?            @map("challenge_id") @db.Uuid
+  ownerUserId         String             @map("owner_user_id") @db.Uuid
+  purpose             FileAssetPurpose
+  resourceType        String             @map("resource_type") @db.VarChar(80)
+  resourceId          String             @map("resource_id") @db.Uuid
+  displayName         String             @map("display_name") @db.VarChar(255)
+  objectKey           String             @unique(map: "stored_object_key_uq") @map("object_key") @db.VarChar(700)
+  expectedContentType String             @map("expected_content_type") @db.VarChar(120)
+  expectedBytes       Int                @map("expected_bytes")
+  actualContentType   String?            @map("actual_content_type") @db.VarChar(120)
+  actualBytes         Int?               @map("actual_bytes")
+  etag                String?            @db.VarChar(200)
+  status              StoredObjectStatus @default(PENDING_UPLOAD)
+  scanDetail          String?            @map("scan_detail") @db.VarChar(500)
+  uploadExpiresAt     DateTime           @map("upload_expires_at") @db.Timestamptz(6)
+  uploadedAt          DateTime?          @map("uploaded_at") @db.Timestamptz(6)
+  scanStartedAt       DateTime?          @map("scan_started_at") @db.Timestamptz(6)
+  scannedAt           DateTime?          @map("scanned_at") @db.Timestamptz(6)
+  deletionRequestedAt DateTime?          @map("deletion_requested_at") @db.Timestamptz(6)
+  deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "stored_object_organization_fk")
+  challenge    Challenge?   @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "stored_object_challenge_fk")
+  owner        User         @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, map: "stored_object_owner_fk")
+  fileAsset    FileAsset?
+
+  @@unique([id, organizationId], map: "stored_object_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "stored_object_scope_uq")
+  @@index([organizationId, challengeId, resourceType, resourceId], map: "stored_object_resource_idx")
+  @@index([organizationId, status, createdAt], map: "stored_object_org_status_idx")
+  @@index([status, uploadExpiresAt], map: "stored_object_cleanup_idx")
+  @@map("stored_object")
+}
+
+model FileAsset {
+  id             String           @id @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  challengeId    String?          @map("challenge_id") @db.Uuid
+  storedObjectId String           @unique(map: "file_asset_stored_object_uq") @map("stored_object_id") @db.Uuid
+  ownerUserId    String           @map("owner_user_id") @db.Uuid
+  purpose        FileAssetPurpose
+  resourceType   String           @map("resource_type") @db.VarChar(80)
+  resourceId     String           @map("resource_id") @db.Uuid
+  displayName    String           @map("display_name") @db.VarChar(255)
+  status         FileAssetStatus  @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict, map: "file_asset_organization_fk")
+  challenge        Challenge?        @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "file_asset_challenge_fk")
+  owner            User              @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, map: "file_asset_owner_fk")
+  storedObject     StoredObject      @relation(fields: [storedObjectId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "file_asset_stored_object_fk")
+  submissionAssets SubmissionAsset[]
+
+  @@unique([id, organizationId], map: "file_asset_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "file_asset_scope_uq")
+  @@unique([storedObjectId, organizationId], map: "file_asset_object_org_uq")
+  @@index([organizationId, challengeId, resourceType, resourceId], map: "file_asset_resource_idx")
+  @@map("file_asset")
+}
+
+model OrganizationLimit {
+  organizationId       String   @id @map("organization_id") @db.Uuid
+  maxStoredBytes       BigInt   @default(1073741824) @map("max_stored_bytes")
+  maxFileCount         Int      @default(1000) @map("max_file_count")
+  reservedBytes        BigInt   @default(0) @map("reserved_bytes")
+  storedBytes          BigInt   @default(0) @map("stored_bytes")
+  activeFileCount      Int      @default(0) @map("active_file_count")
+  maxConcurrentExports Int      @default(3) @map("max_concurrent_exports")
+  queueWeight          Int      @default(1) @map("queue_weight")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "organization_limit_organization_fk")
+
+  @@map("organization_limit")
+}

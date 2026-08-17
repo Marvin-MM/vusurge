@@ -1,0 +1,92 @@
+// Outbound-only Slack/Discord integrations (master prompt section 18: no
+// two-way synchronization in this release). Tenant-scoped.
+
+enum IntegrationProvider {
+  SLACK
+  DISCORD
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  DISABLED
+  DELETED
+}
+
+enum IntegrationDeliveryStatus {
+  PENDING
+  SENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum IntegrationDeliveryAttemptOutcome {
+  STARTED
+  SUCCEEDED
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+}
+
+model Integration {
+  id                   String              @id @db.Uuid
+  organizationId       String              @map("organization_id") @db.Uuid
+  provider             IntegrationProvider
+  /// AES-256-GCM ciphertext of the webhook URL (shared/encryption). Never
+  /// returned decrypted through any API response.
+  webhookUrlCiphertext String              @map("webhook_url_ciphertext")
+  status               IntegrationStatus   @default(ACTIVE)
+  createdByUserId      String              @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  deliveries IntegrationDelivery[]
+
+  /// One integration per (organization, provider) — a second "connect Slack"
+  /// replaces credentials via update, not a duplicate row.
+  @@unique([organizationId, provider], map: "integration_org_provider_uq")
+  @@unique([id, organizationId], map: "integration_id_org_uq")
+  @@map("integration")
+}
+
+model IntegrationDelivery {
+  id             String                    @id @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  integrationId  String                    @map("integration_id") @db.Uuid
+  eventType      String                    @map("event_type") @db.VarChar(120)
+  sourceKey      String                    @unique(map: "integration_delivery_source_key_uq") @map("source_key") @db.VarChar(255)
+  message        String                    @db.VarChar(4000)
+  status         IntegrationDeliveryStatus @default(PENDING)
+  attempts       Int                       @default(0)
+  succeeded      Boolean?
+  responseStatus Int?                      @map("response_status")
+  errorMessage   String?                   @map("error_message") @db.VarChar(1000)
+  lastAttemptAt  DateTime?                 @map("last_attempt_at") @db.Timestamptz(6)
+  completedAt    DateTime?                 @map("completed_at") @db.Timestamptz(6)
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  integration Integration                  @relation(fields: [integrationId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "integration_delivery_integration_fk")
+  attemptLog  IntegrationDeliveryAttempt[]
+
+  @@unique([id, organizationId], map: "integration_delivery_id_org_uq")
+  @@index([organizationId, integrationId, createdAt(sort: Desc)], map: "integration_delivery_org_integration_idx")
+  @@index([organizationId, status, createdAt], map: "integration_delivery_org_status_idx")
+  @@map("integration_delivery")
+}
+
+model IntegrationDeliveryAttempt {
+  id                    String                            @id @db.Uuid
+  organizationId        String                            @map("organization_id") @db.Uuid
+  integrationDeliveryId String                            @map("integration_delivery_id") @db.Uuid
+  attemptNumber         Int                               @map("attempt_number")
+  outcome               IntegrationDeliveryAttemptOutcome @default(STARTED)
+  responseStatus        Int?                              @map("response_status")
+  errorMessage          String?                           @map("error_message") @db.VarChar(1000)
+  startedAt             DateTime                          @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt            DateTime?                         @map("finished_at") @db.Timestamptz(6)
+
+  delivery IntegrationDelivery @relation(fields: [integrationDeliveryId, organizationId], references: [id, organizationId], onDelete: Restrict, map: "integration_attempt_delivery_fk")
+
+  @@unique([integrationDeliveryId, attemptNumber], map: "integration_attempt_number_uq")
+  @@index([organizationId, integrationDeliveryId], map: "integration_attempt_org_delivery_idx")
+  @@map("integration_delivery_attempt")
+}

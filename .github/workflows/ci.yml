@@ -1,0 +1,293 @@
+name: CI
+
+# The quality gate a merge or deploy candidate must pass (master prompt
+# section 46). Nothing here may be skipped, made non-blocking, or worked around
+# with a skipTests flag: the tenant-isolation and concurrency guarantees are
+# only credible because these jobs run against real PostgreSQL and Redis.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  BUN_VERSION: '1.3.13'
+
+jobs:
+  static-analysis:
+    name: Lint, typecheck and generated-artifact check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      # Frozen: the build must fail rather than silently resolve a dependency
+      # tree different from the one that was tested.
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Formatter and linter
+        run: bun run lint
+
+      - name: Strict typecheck
+        run: bun run typecheck
+
+      - name: Prisma schema validation (warnings are failures)
+        run: bun run db:validate
+
+      - name: Requirement evidence and catalogue freshness
+        run: bun run evidence:check
+
+  test:
+    name: Tests against real PostgreSQL and Redis
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+        env:
+          POSTGRES_USER: ci_bootstrap
+          POSTGRES_PASSWORD: ci_bootstrap
+          POSTGRES_DB: innovation_platform
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_bootstrap -d innovation_platform"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+      # Cache Redis: volatile, TTL-friendly eviction.
+      redis-cache:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+      # Queue Redis: a physically separate instance, because BullMQ requires
+      # noeviction and the cache does not. Testing them as one server would
+      # hide exactly the misconfiguration this separation exists to prevent.
+      redis-queue:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports: ['6380:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+    env:
+      APP_ENV: test
+      PROCESS_ROLE: api
+      PUBLIC_BASE_URL: http://localhost:3000
+      WEB_APP_BASE_URL: http://localhost:3001
+      TRUSTED_ORIGINS: http://localhost:3001
+      BOOTSTRAP_DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
+      DB_MIGRATOR_USER: ip_migrator
+      DB_MIGRATOR_PASSWORD: ci_migrator
+      DB_APP_USER: ip_app
+      DB_APP_PASSWORD: ci_app
+      MIGRATION_DATABASE_URL: postgresql://ip_migrator:ci_migrator@127.0.0.1:5432/innovation_platform
+      DATABASE_URL: postgresql://ip_app:ci_app@127.0.0.1:5432/innovation_platform
+      SHADOW_DATABASE_NAME: innovation_platform_shadow
+      SHADOW_DATABASE_URL: postgresql://ip_migrator:ci_migrator@127.0.0.1:5432/innovation_platform_shadow
+      CACHE_REDIS_URL: redis://127.0.0.1:6379
+      QUEUE_REDIS_URL: redis://127.0.0.1:6380
+      # CI-only values. Never reused anywhere else.
+      BETTER_AUTH_SECRET: ci_better_auth_secret_at_least_32_chars
+      ENCRYPTION_MASTER_KEY: Y2lfZW5jcnlwdGlvbl9rZXlfZXhhY3RseV8zMmJ5dGVz
+      EMAIL_ENABLED: 'false'
+      CLOUDINARY_ENABLED: 'false'
+      OBJECT_STORAGE_ENABLED: 'false'
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      # Proves the least-privilege roles can be provisioned from nothing.
+      - name: Bootstrap database roles
+        run: bun run db:bootstrap
+
+      # Proves every migration applies cleanly to an EMPTY database, which is
+      # what a disaster-recovery rebuild actually does.
+      - name: Apply migrations to an empty database
+        run: bun run db:migrate
+
+      - name: Migration history matches the Prisma schema
+        run: bun run db:drift:check
+
+      # The generated Prisma client is committed so image builds need no
+      # database. Regenerating it must produce no diff, or the committed copy
+      # has drifted from the schema.
+      - name: Verify the committed Prisma client is current
+        run: |
+          bun run db:generate
+          git diff --exit-code -- src/generated/prisma \
+            || (echo "::error::src/generated/prisma is stale. Run 'bun run db:generate' and commit the result." && exit 1)
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Integration tests (real PostgreSQL)
+        run: bun run test:integration
+
+      - name: Authorization matrix tests
+        run: bun run test:authorization
+
+      - name: Concurrency and deadline tests
+        run: bun run test:concurrency
+
+      - name: Queue and outbox tests
+        run: bun run test:queue
+
+      - name: End-to-end critical workflows
+        run: bun run test:e2e
+
+      - name: Security regression tests
+        run: bun run test:security
+
+      # The specification is generated from the DTOs, so a drift here means an
+      # API contract changed without the documentation following it.
+      - name: OpenAPI contract check
+        run: |
+          bun run openapi:generate
+          git diff --exit-code -- docs/openapi.json \
+            || (echo "::error::docs/openapi.json is stale. Run 'bun run openapi:generate' and commit the result." && exit 1)
+
+      # Both processes must reach a serving state with real dependencies.
+      - name: Smoke start the API process
+        run: |
+          bun run src/index.ts &
+          API_PID=$!
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/health/ready > /dev/null; then
+              echo "API reported ready"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "::error::API never became ready"
+              kill "$API_PID" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+          # Graceful shutdown must succeed within the configured budget.
+          kill -TERM "$API_PID"
+          wait "$API_PID" || true
+
+      - name: Smoke start the worker process
+        env:
+          PROCESS_ROLE: worker
+        run: |
+          bun run src/worker.ts &
+          WORKER_PID=$!
+          sleep 8
+          if ! kill -0 "$WORKER_PID" 2>/dev/null; then
+            echo "::error::Worker process exited unexpectedly"
+            exit 1
+          fi
+          kill -TERM "$WORKER_PID"
+          wait "$WORKER_PID" || true
+
+  security-scan:
+    name: Dependency and secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # Full history so the secret scan can inspect every commit, not just
+          # the tip.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Dependency vulnerability scan
+        run: bun audit --audit-level=high
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: backend
+          format: cyclonedx-json
+          output-file: backend-sbom.cdx.json
+          artifact-name: backend-sbom
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert no real secrets in the environment template
+        run: |
+          if grep -nEi '^[A-Z_]+=(re_|sk_|whsec_|AKIA|ghp_|gho_)' .env.example; then
+            echo "::error::.env.example appears to contain a real credential"
+            exit 1
+          fi
+          echo ".env.example contains no credential-shaped values"
+
+  docker:
+    name: Container image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      # Both targets are built: the image build also runs typecheck and lint,
+      # so a broken artefact cannot be pushed.
+      - name: Build API image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: worker
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build release image for vulnerability scan
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: api
+          push: false
+          load: true
+          tags: innovation-platform-backend:ci
+          cache-from: type=gha
+
+      - name: Scan release image (no HIGH/CRITICAL findings)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: innovation-platform-backend:ci
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'

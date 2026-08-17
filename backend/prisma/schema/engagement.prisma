@@ -1,0 +1,69 @@
+// Announcements and FAQs (master prompt section 18). Organization- or
+// challenge-scoped; challenge-scoped rows still carry organization_id so
+// composite foreign keys can reject a cross-tenant reference at the database
+// level (master prompt section 6.2).
+
+enum AnnouncementAudience {
+  ALL_MEMBERS
+  CHALLENGE_PARTICIPANTS
+  PUBLIC
+}
+
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Announcement {
+  id                 String               @id @db.Uuid
+  organizationId     String               @map("organization_id") @db.Uuid
+  /// Null for an organization-wide announcement.
+  challengeId        String?              @map("challenge_id") @db.Uuid
+  title              String               @db.VarChar(200)
+  /// Markdown source, stored and returned verbatim.
+  body               String
+  audience           AnnouncementAudience @default(ALL_MEMBERS)
+  priority           AnnouncementPriority @default(NORMAL)
+  /// Informational scheduling intent only; publishing itself always happens
+  /// through the explicit publish action, never a background auto-flip, until
+  /// the reminder/scheduling infrastructure in a later phase drives it.
+  publishAt          DateTime?            @map("publish_at") @db.Timestamptz(6)
+  expiresAt          DateTime?            @map("expires_at") @db.Timestamptz(6)
+  isPublished        Boolean              @default(false) @map("is_published")
+  publishedAt        DateTime?            @map("published_at") @db.Timestamptz(6)
+  deliverInApp       Boolean              @default(true) @map("deliver_in_app")
+  deliverEmail       Boolean              @default(false) @map("deliver_email")
+  deliverIntegration Boolean              @default(false) @map("deliver_integration")
+  createdByUserId    String               @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge? @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "announcement_challenge_fk")
+
+  @@unique([id, organizationId], map: "announcement_id_org_uq")
+  @@index([organizationId, challengeId, isPublished], map: "announcement_org_challenge_idx")
+  @@map("announcement")
+}
+
+model Faq {
+  id              String   @id @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  /// Null for an organization-wide FAQ entry.
+  challengeId     String?  @map("challenge_id") @db.Uuid
+  question        String   @db.VarChar(500)
+  /// Markdown source, stored and returned verbatim.
+  answer          String
+  displayOrder    Int      @default(0) @map("display_order")
+  isPublished     Boolean  @default(false) @map("is_published")
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge? @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "faq_challenge_fk")
+
+  @@unique([id, organizationId], map: "faq_id_org_uq")
+  @@index([organizationId, challengeId, displayOrder], map: "faq_org_challenge_order_idx")
+  @@map("faq")
+}

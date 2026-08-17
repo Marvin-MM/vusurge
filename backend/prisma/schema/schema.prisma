@@ -1,0 +1,17 @@
+// Root schema file: generator and datasource only.
+// Domain models live in sibling .prisma files in this folder.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../../src/generated/prisma"
+  moduleFormat    = "esm"
+  runtime         = "bun"
+  previewFeatures = ["typedSql"]
+}
+
+// Prisma 7 no longer accepts a connection URL in the schema. The CLI reads it
+// from prisma.config.ts (MIGRATION_DATABASE_URL) and the application supplies
+// its own least-privilege connection through the pg driver adapter.
+datasource db {
+  provider = "postgresql"
+}

@@ -1,0 +1,138 @@
+// Submissions: logical identity, immutable versions, and bounded screenshots
+// (master prompt section 15).
+
+enum SubmissionStatus {
+  DRAFT
+  FINALIZED
+  DISQUALIFIED
+}
+
+enum SubmissionAssetKind {
+  SCREENSHOT
+  PRESENTATION_FILE
+}
+
+/// The logical identity: one per team per challenge by default. Never holds
+/// mutable content itself — every field a participant edits lives on a
+/// `SubmissionVersion`, so judges can always evaluate an immutable snapshot.
+model Submission {
+  id                     String           @id @db.Uuid
+  organizationId         String           @map("organization_id") @db.Uuid
+  challengeId            String           @map("challenge_id") @db.Uuid
+  teamId                 String           @map("team_id") @db.Uuid
+  trackId                String?          @map("track_id") @db.Uuid
+  status                 SubmissionStatus @default(DRAFT)
+  /// Points at the mutable working copy; null once no draft exists beyond
+  /// what has already been finalized.
+  draftVersionId         String?          @map("draft_version_id") @db.Uuid
+  /// Points at the immutable version judges evaluate. Set only on finalize.
+  finalVersionId         String?          @map("final_version_id") @db.Uuid
+  disqualifiedAt         DateTime?        @map("disqualified_at") @db.Timestamptz(6)
+  disqualifiedByUserId   String?          @map("disqualified_by_user_id") @db.Uuid
+  disqualificationReason String?          @map("disqualification_reason") @db.VarChar(1000)
+  finalizedAt            DateTime?        @map("finalized_at") @db.Timestamptz(6)
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge        Challenge           @relation(fields: [challengeId, organizationId], references: [id, organizationId], onDelete: Cascade, map: "submission_challenge_fk")
+  team             ChallengeTeam       @relation(fields: [teamId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "submission_team_fk")
+  track            ChallengeTrack?     @relation(fields: [trackId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "submission_track_fk")
+  draftVersion     SubmissionVersion?  @relation("SubmissionDraftVersion", fields: [draftVersionId, organizationId, challengeId, id], references: [id, organizationId, challengeId, submissionId], onDelete: Restrict, map: "submission_draft_version_fk")
+  finalVersion     SubmissionVersion?  @relation("SubmissionFinalVersion", fields: [finalVersionId, organizationId, challengeId, id], references: [id, organizationId, challengeId, submissionId], onDelete: Restrict, map: "submission_final_version_fk")
+  versions         SubmissionVersion[]
+  judgeAssignments JudgeAssignment[]
+  innovations      Innovation[]
+  results          SubmissionResult[]
+
+  /// One logical submission per team per challenge (master prompt 15.1).
+  @@unique([challengeId, teamId], map: "submission_challenge_team_uq")
+  @@unique([id, organizationId], map: "submission_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "submission_scope_uq")
+  @@index([organizationId, challengeId, status], map: "submission_org_challenge_status_idx")
+  @@map("submission")
+}
+
+/// An immutable, saved snapshot. A new version is created on every draft
+/// save and on every finalize; nothing here is ever updated in place.
+model SubmissionVersion {
+  id                  String   @id @db.Uuid
+  organizationId      String   @map("organization_id") @db.Uuid
+  submissionId        String   @map("submission_id") @db.Uuid
+  challengeId         String   @map("challenge_id") @db.Uuid
+  versionNumber       Int      @map("version_number")
+  isFinal             Boolean  @default(false) @map("is_final")
+  title               String?  @db.VarChar(200)
+  tagline             String?  @db.VarChar(300)
+  /// Markdown source, stored and returned verbatim.
+  problemStatement    String?  @map("problem_statement")
+  solutionDescription String?  @map("solution_description")
+  impactBeneficiaries String?  @map("impact_beneficiaries")
+  repositoryUrl       String?  @map("repository_url") @db.VarChar(2048)
+  demoUrl             String?  @map("demo_url") @db.VarChar(2048)
+  pitchVideoUrl       String?  @map("pitch_video_url") @db.VarChar(2048)
+  presentationUrl     String?  @map("presentation_url") @db.VarChar(2048)
+  /// Array of { label, url } objects; validated in the service layer.
+  supportingLinks     Json     @default("[]") @map("supporting_links")
+  publicationConsent  Boolean  @default(false) @map("publication_consent")
+  termsVersionId      String?  @map("terms_version_id") @db.Uuid
+  createdByUserId     String   @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  submission          Submission             @relation(fields: [submissionId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Cascade, map: "submission_version_submission_fk")
+  termsVersion        ChallengeTermsVersion? @relation(fields: [termsVersionId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "submission_version_terms_fk")
+  creator             User                   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict, map: "submission_version_creator_fk")
+  assets              SubmissionAsset[]
+  technologies        SubmissionTechnology[]
+  draftForSubmissions Submission[]           @relation("SubmissionDraftVersion")
+  finalForSubmissions Submission[]           @relation("SubmissionFinalVersion")
+  resultSelections    SubmissionResult[]
+
+  @@unique([submissionId, versionNumber], map: "submission_version_submission_number_uq")
+  @@unique([id, organizationId], map: "submission_version_id_org_uq")
+  @@unique([id, organizationId, challengeId], map: "submission_version_id_org_challenge_uq")
+  @@unique([id, organizationId, challengeId, submissionId], map: "submission_version_scope_uq")
+  @@index([organizationId, submissionId], map: "submission_version_org_submission_idx")
+  @@map("submission_version")
+}
+
+/// Bounded to four slots per version, enforced by the unique index on
+/// (submission_version_id, slot) plus a check constraint on slot's range
+/// (added in migration SQL) — the limit holds at the database level, not
+/// only in application validation (master prompt section 15.5).
+model SubmissionAsset {
+  id                  String              @id @db.Uuid
+  organizationId      String              @map("organization_id") @db.Uuid
+  challengeId         String              @map("challenge_id") @db.Uuid
+  submissionVersionId String              @map("submission_version_id") @db.Uuid
+  kind                SubmissionAssetKind
+  slot                Int?
+  mediaAssetId        String?             @map("media_asset_id") @db.Uuid
+  fileAssetId         String?             @map("file_asset_id") @db.Uuid
+  displayName         String?             @map("display_name") @db.VarChar(255)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  submissionVersion SubmissionVersion @relation(fields: [submissionVersionId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Cascade, map: "submission_asset_version_fk")
+  mediaAsset        MediaAsset?       @relation(fields: [mediaAssetId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "submission_asset_media_fk")
+  fileAsset         FileAsset?        @relation(fields: [fileAssetId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Restrict, map: "submission_asset_file_fk")
+
+  @@unique([submissionVersionId, kind, slot], map: "submission_asset_version_kind_slot_uq")
+  @@index([organizationId, challengeId, submissionVersionId], map: "submission_asset_scope_idx")
+  @@map("submission_asset")
+}
+
+model SubmissionTechnology {
+  id                   String   @id @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  challengeId          String   @map("challenge_id") @db.Uuid
+  submissionVersionId  String   @map("submission_version_id") @db.Uuid
+  technologyTagId      String   @map("technology_tag_id") @db.Uuid
+  displayLabelSnapshot String   @map("display_label_snapshot") @db.VarChar(80)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  submissionVersion SubmissionVersion @relation(fields: [submissionVersionId, organizationId, challengeId], references: [id, organizationId, challengeId], onDelete: Cascade, map: "submission_technology_version_fk")
+  technologyTag     TechnologyTag     @relation(fields: [technologyTagId], references: [id], onDelete: Restrict, map: "submission_technology_tag_fk")
+
+  @@unique([submissionVersionId, technologyTagId], map: "submission_technology_version_tag_uq")
+  @@index([organizationId, challengeId, technologyTagId], map: "submission_technology_scope_tag_idx")
+  @@map("submission_technology")
+}

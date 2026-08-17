@@ -1,0 +1,332 @@
+// Global identity: accounts, sessions, profiles, and skills.
+//
+// A user account is GLOBAL, not tenant-owned. The same person may hold zero,
+// one, or many organization memberships, and an account with no membership at
+// all is a fully valid, indefinitely supported state.
+//
+// The user/session/account/verification/two_factor tables are owned by Better
+// Auth. Their shape is dictated by the library; the comments record why each
+// column exists rather than restating the field name.
+
+/// Platform-wide role. Distinct from organization roles: a platform superadmin
+/// is deliberately NOT modelled as an ordinary organization member.
+enum PlatformRole {
+  PLATFORM_SUPERADMIN
+  PLATFORM_SUPPORT_AGENT
+}
+
+/// Who may see a user's profile.
+enum ProfileVisibility {
+  /// Visible on public projections (public results, public matchmaking).
+  PUBLIC
+  /// Visible only to members of organizations the user belongs to.
+  ORGANIZATION_MEMBERS
+  /// Visible only to the user.
+  PRIVATE
+}
+
+/// Lifecycle of a user's own request to delete their account.
+enum AccountDeletionStatus {
+  PENDING
+  CANCELLED
+  COMPLETED
+}
+
+/// Global user account. Owned by Better Auth.
+///
+/// `emailVerified` gates every membership-granting path: invitation
+/// acceptance, join-code redemption, organization application, and
+/// challenge-staff invitation acceptance all require it.
+model User {
+  id               String    @id @db.Uuid
+  name             String    @db.VarChar(200)
+  email            String    @unique(map: "user_email_uq") @db.VarChar(254)
+  emailVerified    Boolean   @default(false) @map("email_verified")
+  /// Avatar URL managed by Better Auth. The curated avatar asset lives on
+  /// UserProfile so that image delivery stays under the media policy.
+  image            String?   @db.VarChar(2048)
+  /// Mandatory for PLATFORM_SUPERADMIN; optional for everyone else.
+  twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
+  /// Retained pseudonymous subject rows have this set after the deletion workflow completes.
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions                             Session[]
+  accounts                             Account[]
+  twoFactors                           TwoFactor[]
+  profile                              UserProfile?
+  skills                               UserSkill[]
+  platformRoles                        PlatformRoleAssignment[]                @relation("PlatformRoleHolder")
+  grantedPlatformRoles                 PlatformRoleAssignment[]                @relation("PlatformRoleGranter")
+  memberships                          OrganizationMembership[]
+  organizationApplications             OrganizationApplication[]               @relation("ApplicationRequester")
+  reviewedApplications                 OrganizationApplication[]               @relation("ApplicationReviewer")
+  createdInvitations                   OrganizationInvitation[]                @relation("InvitationCreator")
+  acceptedInvitations                  OrganizationInvitation[]                @relation("InvitationAcceptor")
+  createdJoinCodes                     OrganizationJoinCode[]
+  joinRequests                         OrganizationJoinRequest[]               @relation("JoinRequester")
+  reviewedJoinRequests                 OrganizationJoinRequest[]               @relation("JoinRequestReviewer")
+  deletionRequests                     AccountDeletionRequest[]
+  mediaAssets                          MediaAsset[]
+  storedObjects                        StoredObject[]
+  fileAssets                           FileAsset[]
+  emailDeliveries                      EmailDelivery[]
+  teamMemberships                      ChallengeTeamMember[]
+  receivedTeamInvitations              TeamInvitation[]                        @relation("TeamInvitationInvitee")
+  sentTeamInvitations                  TeamInvitation[]                        @relation("TeamInvitationInviter")
+  matchmakingPosts                     MatchmakingPost[]                       @relation("MatchmakingPoster")
+  matchmakingInterests                 MatchmakingInterest[]
+  submissionVersions                   SubmissionVersion[]
+  finalizedResultSnapshots             ResultSnapshot[]
+  createdSubmissionRequirementVersions ChallengeSubmissionRequirementVersion[]
+  notifications                        Notification[]
+  notificationPreference               NotificationPreference?
+  outboxEvents                         OutboxEvent[]
+
+  @@index([createdAt], map: "user_created_idx")
+  @@map("user")
+}
+
+/// Durable session. Owned by Better Auth.
+///
+/// Sessions live in PostgreSQL, not Redis: a cache eviction or Redis restart
+/// must never silently sign every user out. See ADR 0004.
+model Session {
+  id                   String    @id @db.Uuid
+  /// Opaque token stored in an HttpOnly cookie. Never exposed to page script.
+  token                String    @unique(map: "session_token_uq") @db.VarChar(255)
+  expiresAt            DateTime  @map("expires_at") @db.Timestamptz(6)
+  ipAddress            String?   @map("ip_address") @db.VarChar(64)
+  userAgent            String?   @map("user_agent") @db.VarChar(500)
+  /// Server-controlled assurance. Null until this session completes a second
+  /// factor; enrollment alone never sets it.
+  mfaVerifiedAt        DateTime? @map("mfa_verified_at") @db.Timestamptz(6)
+  authenticationMethod String?   @map("authentication_method") @db.VarChar(32)
+  userId               String    @map("user_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "session_user_idx")
+  /// Retention sweep for expired sessions.
+  @@index([expiresAt], map: "session_expires_idx")
+  @@map("session")
+}
+
+/// Credential or OAuth account linked to a user. Owned by Better Auth.
+///
+/// Provider tokens stored here are secrets: they are never serialized into any
+/// API response, log line, or audit payload.
+model Account {
+  id                    String    @id @db.Uuid
+  /// Provider's identifier for the account (subject claim, or the user id).
+  accountId             String    @map("account_id") @db.VarChar(255)
+  providerId            String    @map("provider_id") @db.VarChar(64)
+  userId                String    @map("user_id") @db.Uuid
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(6)
+  scope                 String?   @db.VarChar(500)
+  /// Argon2/scrypt hash for the email+password provider. Never a plaintext.
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One account per provider identity. Prevents the same OAuth identity being
+  /// linked to two platform users, which would be an account-takeover path.
+  @@unique([providerId, accountId], map: "account_provider_account_uq")
+  @@index([userId], map: "account_user_idx")
+  @@map("account")
+}
+
+/// Email verification and password reset tokens. Owned by Better Auth.
+model Verification {
+  id         String   @id @db.Uuid
+  identifier String   @db.VarChar(255)
+  value      String   @db.VarChar(255)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([identifier], map: "verification_identifier_idx")
+  @@index([expiresAt], map: "verification_expires_idx")
+  @@map("verification")
+}
+
+/// Two-factor enrolment. Owned by the Better Auth twoFactor plugin.
+///
+/// Mandatory for platform superadmins, optional for everyone else. The secret
+/// and backup codes are credentials and are never returned by any API.
+model TwoFactor {
+  id                      String    @id @db.Uuid
+  secret                  String
+  backupCodes             String    @map("backup_codes")
+  userId                  String    @map("user_id") @db.Uuid
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "two_factor_user_idx")
+  @@index([lockedUntil], map: "two_factor_locked_until_idx")
+  @@map("two_factor")
+}
+
+/// Platform-wide role grant.
+///
+/// Modelled as its own table rather than a column on User so that grants carry
+/// provenance — who granted it, when, and why — and so that revocation is a
+/// state change with history rather than a silent overwrite.
+model PlatformRoleAssignment {
+  id        String       @id @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  role      PlatformRole
+  grantedBy String?      @map("granted_by") @db.Uuid
+  /// Justification recorded at grant time. Also written to the audit trail.
+  reason    String?      @db.VarChar(1000)
+  grantedAt DateTime     @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt DateTime?    @map("revoked_at") @db.Timestamptz(6)
+  revokedBy String?      @map("revoked_by") @db.Uuid
+
+  user    User  @relation("PlatformRoleHolder", fields: [userId], references: [id], onDelete: Cascade)
+  granter User? @relation("PlatformRoleGranter", fields: [grantedBy], references: [id], onDelete: SetNull)
+
+  /// A user holds a given platform role at most once. Revoked grants are kept
+  /// for history, so the uniqueness is enforced by a partial index over active
+  /// rows, added in migration SQL.
+  @@index([userId, role], map: "platform_role_user_role_idx")
+  @@index([role, revokedAt], map: "platform_role_role_revoked_idx")
+  @@map("platform_role_assignment")
+}
+
+/// The user-editable public-facing profile.
+///
+/// Separate from the Better Auth `user` row so that product profile fields can
+/// evolve without touching a library-owned table, and so profile visibility is
+/// a first-class column rather than an afterthought.
+model UserProfile {
+  userId        String            @id @map("user_id") @db.Uuid
+  displayName   String?           @map("display_name") @db.VarChar(120)
+  /// Markdown source. Stored and returned verbatim; never rendered to HTML by
+  /// the backend.
+  bio           String?           @db.VarChar(2000)
+  location      String?           @db.VarChar(120)
+  /// Cloudinary asset reference for the avatar. Populated only after the
+  /// upload is confirmed and verified against the expected metadata.
+  avatarAssetId String?           @map("avatar_asset_id") @db.Uuid
+  githubUrl     String?           @map("github_url") @db.VarChar(2048)
+  linkedinUrl   String?           @map("linkedin_url") @db.VarChar(2048)
+  portfolioUrl  String?           @map("portfolio_url") @db.VarChar(2048)
+  discordHandle String?           @map("discord_handle") @db.VarChar(64)
+  visibility    ProfileVisibility @default(ORGANIZATION_MEMBERS)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profile")
+}
+
+/// Curated skill catalogue.
+///
+/// A normalised catalogue rather than a free-text string, so that matchmaking
+/// and search can filter reliably. Organizers cannot create catalogue entries
+/// directly; unrecognised values are held as controlled custom skills on
+/// UserSkill instead.
+model Skill {
+  id        String   @id @db.Uuid
+  /// Canonical display form, e.g. "TypeScript".
+  name      String   @db.VarChar(80)
+  /// Lowercased, punctuation-stripped form used for matching and uniqueness.
+  slug      String   @unique(map: "skill_slug_uq") @db.VarChar(80)
+  category  String?  @db.VarChar(60)
+  /// Set false to retire a skill without breaking historical references.
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userSkills UserSkill[]
+
+  @@index([active, name], map: "skill_active_name_idx")
+  @@map("skill")
+}
+
+/// Curated technology-tag catalogue for the `/meta/technology-tags`
+/// typeahead (master prompt section 34.1). Same shape and rationale as
+/// `Skill` — a normalised catalogue, not a free-text scan of every
+/// submission's own `technologyTags` array, which would require a
+/// cross-tenant read of otherwise-private submission data for what is only
+/// ever meant to be autocomplete suggestions.
+model TechnologyTag {
+  id        String   @id @db.Uuid
+  /// Canonical display form, e.g. "TypeScript".
+  name      String   @db.VarChar(80)
+  /// Lowercased, punctuation-stripped form used for matching and uniqueness.
+  slug      String   @unique(map: "technology_tag_slug_uq") @db.VarChar(80)
+  category  String?  @db.VarChar(60)
+  /// Set false to retire a tag without breaking historical references.
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  submissionTechnologies SubmissionTechnology[]
+
+  @@index([active, name], map: "technology_tag_active_name_idx")
+  @@map("technology_tag")
+}
+
+/// A skill claimed by a user.
+///
+/// Either references the catalogue (`skillId`) or carries a controlled custom
+/// value (`customName`) — exactly one of the two, enforced by a check
+/// constraint in migration SQL.
+model UserSkill {
+  id         String   @id @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  skillId    String?  @map("skill_id") @db.Uuid
+  customName String?  @map("custom_name") @db.VarChar(80)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill? @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  /// A user claims a catalogue skill at most once.
+  @@unique([userId, skillId], map: "user_skill_user_skill_uq")
+  @@index([userId], map: "user_skill_user_idx")
+  @@index([skillId], map: "user_skill_skill_idx")
+  @@map("user_skill")
+}
+
+/// A user's request to delete their account.
+///
+/// Deletion is a workflow, not a DELETE: organization history, audit evidence,
+/// and consent records must retain referential integrity, so the applied policy
+/// pseudonymises rather than removes those (master prompt section 42).
+model AccountDeletionRequest {
+  id                 String                @id @db.Uuid
+  userId             String                @map("user_id") @db.Uuid
+  status             AccountDeletionStatus @default(PENDING)
+  /// Optional user-supplied context. Never required.
+  reason             String?               @db.VarChar(1000)
+  requestedAt        DateTime              @default(now()) @map("requested_at") @db.Timestamptz(6)
+  /// Grace period during which the user may cancel.
+  eligibleAt         DateTime              @map("eligible_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?             @map("cancelled_at") @db.Timestamptz(6)
+  completedAt        DateTime?             @map("completed_at") @db.Timestamptz(6)
+  legalHoldAt        DateTime?             @map("legal_hold_at") @db.Timestamptz(6)
+  legalHoldReason    String?               @map("legal_hold_reason") @db.VarChar(1000)
+  legalHoldByUserId  String?               @map("legal_hold_by_user_id") @db.Uuid
+  executionAttempts  Int                   @default(0) @map("execution_attempts")
+  lastExecutionError String?               @map("last_execution_error") @db.VarChar(1000)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status], map: "account_deletion_user_status_idx")
+  @@index([status, eligibleAt], map: "account_deletion_status_eligible_idx")
+  @@map("account_deletion_request")
+}

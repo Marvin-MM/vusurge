@@ -1,0 +1,65 @@
+// In-app notifications and per-user preferences (master prompt section 19).
+//
+// Deliberately a GLOBAL table, like `media_asset` and `user_profile`: a
+// user's notification inbox spans every organization they belong to, judge
+// for, or have applied to — there is no single tenant to scope it to.
+// Authorization is enforced in the service layer (a notification is only
+// ever read/mutated by its own `userId`), the same defense-in-depth boundary
+// already used for the other global, user-owned tables.
+
+enum NotificationCategory {
+  ORGANIZATION_INVITE
+  ORGANIZATION_APPLICATION_DECISION
+  PARTICIPATION_DECISION
+  TEAM_INVITATION
+  TEAM_MEMBERSHIP_CHANGE
+  SUBMISSION_FINALIZED
+  DEADLINE_CHANGED
+  DEADLINE_REMINDER
+  ANNOUNCEMENT
+  JUDGING_ASSIGNMENT
+  JUDGING_REMINDER
+  RESULTS_PUBLISHED
+  FEEDBACK_RELEASED
+  SUPPORT_TICKET_UPDATE
+  MATCHMAKING_INTEREST
+  PORTFOLIO_UPDATE
+}
+
+model Notification {
+  id             String               @id @db.Uuid
+  userId         String               @map("user_id") @db.Uuid
+  /// Context only — never used for tenant scoping, since this table is global.
+  organizationId String?              @map("organization_id") @db.Uuid
+  sourceKey      String?              @map("source_key") @db.VarChar(255)
+  category       NotificationCategory
+  title          String               @db.VarChar(200)
+  body           String               @db.VarChar(2000)
+  /// Relative in-app path the client should navigate to, e.g.
+  /// "/organizations/:id/challenges/:id".
+  linkUrl        String?              @map("link_url") @db.VarChar(2048)
+  readAt         DateTime?            @map("read_at") @db.Timestamptz(6)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, map: "notification_user_fk")
+
+  @@unique([userId, sourceKey], map: "notification_user_source_uq")
+  @@index([userId, readAt, createdAt(sort: Desc)], map: "notification_user_unread_idx")
+  @@map("notification")
+}
+
+/// One row per user. `disabledCategories` lists categories the user has
+/// turned off; categories in the non-disableable set are always delivered
+/// regardless of what this array contains (enforced in the service layer,
+/// not here — the column has no CHECK constraint tying it to the code's
+/// notion of "essential", since that set is a product policy, not a schema
+/// invariant).
+model NotificationPreference {
+  userId             String                 @id @map("user_id") @db.Uuid
+  disabledCategories NotificationCategory[] @map("disabled_categories")
+  updatedAt          DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, map: "notification_preference_user_fk")
+
+  @@map("notification_preference")
+}

@@ -1,0 +1,158 @@
+// Infrastructure consistency tables.
+//
+// These carry no business meaning of their own; they make the business
+// modules correct under retries, crashes, and queue outages.
+
+/// Actor classification for audit records.
+enum AuditActorType {
+  USER
+  SYSTEM
+  PLATFORM_ADMIN
+}
+
+/// Lifecycle of a transactional outbox event.
+enum OutboxState {
+  PENDING
+  ENQUEUED
+  PROCESSED
+  FAILED
+}
+
+/// Append-only business and security audit trail.
+///
+/// Written inside the same transaction as the change it records, so an audit
+/// row exists if and only if the change committed. The runtime database role
+/// is granted INSERT and SELECT only: it cannot UPDATE or DELETE these rows
+/// (enforced in migration SQL, verified by integration tests).
+///
+/// `organizationId` is intentionally NOT a foreign key. Audit evidence must
+/// outlive the organization it describes and must never be blocked or cascaded
+/// by an organization-level operation.
+model AuditEvent {
+  id             String         @id @db.Uuid
+  organizationId String?        @map("organization_id") @db.Uuid
+  actorType      AuditActorType @map("actor_type")
+  actorUserId    String?        @map("actor_user_id") @db.Uuid
+  /// Stable dotted action name, e.g. "organization.membership.role_changed".
+  action         String         @db.VarChar(120)
+  resourceType   String         @map("resource_type") @db.VarChar(80)
+  resourceId     String?        @map("resource_id") @db.Uuid
+  /// Short human-readable description. Never contains secrets or full payloads.
+  summary        String         @db.VarChar(500)
+  /// Redacted before/after fragments. Sensitive fields are removed, not masked.
+  changes        Json?
+  /// Operator-supplied justification, required for high-privilege actions.
+  reason         String?        @db.VarChar(1000)
+  requestId      String?        @map("request_id") @db.VarChar(64)
+  /// Retained subject to the deployment's privacy policy.
+  ipAddress      String?        @map("ip_address") @db.Inet
+  userAgent      String?        @map("user_agent") @db.VarChar(500)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([organizationId, createdAt(sort: Desc)], map: "audit_event_org_created_idx")
+  @@index([actorUserId, createdAt(sort: Desc)], map: "audit_event_actor_created_idx")
+  @@index([resourceType, resourceId, createdAt(sort: Desc)], map: "audit_event_resource_idx")
+  @@index([action, createdAt(sort: Desc)], map: "audit_event_action_created_idx")
+  @@map("audit_event")
+}
+
+/// Transactional outbox.
+///
+/// A business change and its required side effects are committed together: the
+/// row here is the durable record that an effect is owed. A dispatcher later
+/// publishes it to BullMQ using `id` as the job identifier, so a redelivery
+/// cannot produce a duplicate job. Redis losing the queue can delay effects but
+/// can never lose them (master prompt section 20).
+model OutboxEvent {
+  id             String      @id @db.Uuid
+  organizationId String?     @map("organization_id") @db.Uuid
+  /// Captured from the transaction-local actor setting. This scopes global
+  /// (non-organization) obligations without trusting request payload data.
+  actorUserId    String?     @default(dbgenerated("app_current_actor_id()")) @map("actor_user_id") @db.Uuid
+  /// Domain event name, e.g. "challenge.deadline_extended".
+  eventType      String      @map("event_type") @db.VarChar(120)
+  /// Logical queue this event is dispatched to.
+  queueName      String      @map("queue_name") @db.VarChar(60)
+  aggregateType  String      @map("aggregate_type") @db.VarChar(80)
+  aggregateId    String?     @map("aggregate_id") @db.Uuid
+  /// Stable identity of the logical effect. When two code paths (a retry, a
+  /// reconciliation sweep) both decide an effect is owed, the unique index
+  /// keeps exactly one event. Null when duplicates are legitimately distinct.
+  dedupeKey      String?     @unique(map: "outbox_event_dedupe_key_uq") @map("dedupe_key") @db.VarChar(255)
+  /// Event payload. Contains identifiers and safe scalars, never secrets.
+  payload        Json
+  state          OutboxState @default(PENDING)
+  attempts       Int         @default(0)
+  /// Earliest time this event may be dispatched; supports backoff.
+  availableAt    DateTime    @default(now()) @map("available_at") @db.Timestamptz(6)
+  enqueuedAt     DateTime?   @map("enqueued_at") @db.Timestamptz(6)
+  processedAt    DateTime?   @map("processed_at") @db.Timestamptz(6)
+  /// Last failure reason, truncated and free of provider payloads.
+  lastError      String?     @map("last_error") @db.VarChar(1000)
+  requestId      String?     @map("request_id") @db.VarChar(64)
+  /// Trace context so an async effect stays correlated with its originating request.
+  traceParent    String?     @map("trace_parent") @db.VarChar(200)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull, map: "outbox_event_actor_fk")
+
+  /// Dispatcher claim path: pending work, oldest first.
+  @@index([state, availableAt], map: "outbox_event_state_available_idx")
+  /// Reconciler path: events stuck in ENQUEUED.
+  @@index([state, enqueuedAt], map: "outbox_event_state_enqueued_idx")
+  @@index([organizationId, createdAt(sort: Desc)], map: "outbox_event_org_created_idx")
+  @@index([actorUserId, createdAt(sort: Desc)], map: "outbox_event_actor_created_idx")
+  @@map("outbox_event")
+}
+
+/// Idempotency records for high-value retryable POST operations.
+///
+/// Keyed by actor + operation + client-supplied key. A replayed request returns
+/// the stored response instead of performing the effect twice; a different body
+/// under the same key is rejected rather than silently served (section 33).
+model IdempotencyRecord {
+  id             String    @id @db.Uuid
+  /// Authenticated actor. Idempotency keys are never shared across users.
+  actorUserId    String    @map("actor_user_id") @db.Uuid
+  /// Logical operation name, e.g. "submission.finalize".
+  operation      String    @db.VarChar(120)
+  idempotencyKey String    @map("idempotency_key") @db.VarChar(255)
+  /// SHA-256 of the canonical request, to detect key reuse with a new body.
+  requestHash    String    @map("request_hash") @db.Char(64)
+  /// Null while the first attempt is still in flight.
+  responseStatus Int?      @map("response_status")
+  responseBody   Json?     @map("response_body")
+  organizationId String?   @map("organization_id") @db.Uuid
+  requestId      String?   @map("request_id") @db.VarChar(64)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([actorUserId, operation, idempotencyKey], map: "idempotency_record_actor_op_key_uq")
+  @@index([expiresAt], map: "idempotency_record_expires_idx")
+  @@map("idempotency_record")
+}
+
+/// Inbound provider webhook receipts.
+///
+/// Persisted before any consequence is processed, and unique on the provider's
+/// own event identifier so replayed deliveries are recognised and ignored
+/// (sections 21 and 34.37).
+model WebhookEvent {
+  id              String    @id @db.Uuid
+  provider        String    @db.VarChar(40)
+  /// Provider-assigned event ID. Uniqueness is what makes replay safe.
+  providerEventId String    @map("provider_event_id") @db.VarChar(255)
+  eventType       String    @map("event_type") @db.VarChar(120)
+  /// Verified payload as received. Contains no signing secret.
+  payload         Json
+  receivedAt      DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt     DateTime? @map("processed_at") @db.Timestamptz(6)
+  processingError String?   @map("processing_error") @db.VarChar(1000)
+
+  @@unique([provider, providerEventId], map: "webhook_event_provider_event_uq")
+  @@index([provider, receivedAt(sort: Desc)], map: "webhook_event_provider_received_idx")
+  @@index([processedAt], map: "webhook_event_processed_idx")
+  @@map("webhook_event")
+}
