@@ -274,3 +274,21 @@ describe('account deletion request', () => {
     expect(retained.deletedAt).toBeNull()
   })
 })
+
+describe('GET /me: platform role self-identification', () => {
+  test('reports null for an ordinary user and the real role for a platform admin', async () => {
+    const ordinary = await createVerifiedUser(app)
+    const ordinaryMe = await app.request<{ platformRole: string | null }>('GET', '/api/v1/me', {
+      cookies: ordinary.cookie,
+    })
+    expect(ordinaryMe.status).toBe(200)
+    expect(ordinaryMe.body.platformRole).toBeNull()
+
+    const superadmin = await createPlatformSuperadmin(app)
+    const superadminMe = await app.request<{ platformRole: string | null }>('GET', '/api/v1/me', {
+      cookies: superadmin.cookie,
+    })
+    expect(superadminMe.status).toBe(200)
+    expect(superadminMe.body.platformRole).toBe('PLATFORM_SUPERADMIN')
+  })
+})

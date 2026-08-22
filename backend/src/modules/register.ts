@@ -341,6 +341,9 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
   const notificationsController = createNotificationsController(notificationsService)
 
   // --- submissions -------------------------------------------------------
+  // judgingRepository is created early so submissions can check for an
+  // active judge assignment when authorizing a non-owner submission view.
+  const judgingRepository = createJudgingRepository()
   const submissionsRepository = createSubmissionsRepository()
   const submissionsService = createSubmissionsService(
     submissionsRepository,
@@ -349,6 +352,7 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
     challengesRepository,
     organizationsRepository,
     mediaRepository,
+    judgingRepository,
     infrastructure.transactions,
     infrastructure.audit,
     infrastructure.outbox,
@@ -359,7 +363,6 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
   )
 
   // --- judging -------------------------------------------------------------
-  const judgingRepository = createJudgingRepository()
   const judgingService = createJudgingService(
     judgingRepository,
     challengesRepository,
@@ -368,6 +371,7 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
     infrastructure.transactions,
     infrastructure.audit,
     infrastructure.outbox,
+    infrastructure.rateLimiter,
   )
   const judgingController = createJudgingController(judgingService, infrastructure.idempotency)
 

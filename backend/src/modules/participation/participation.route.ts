@@ -3,6 +3,7 @@ import type { AuthPlugin } from '../../shared/auth'
 import { CommonErrorResponses, Uuid } from '../../shared/http'
 import type { ParticipationController } from './participation.controller'
 import {
+  ApplicationFormResponse,
   ApproveParticipationBody,
   DisqualifyParticipationBody,
   ParticipationApplicationDraftResponse,
@@ -44,6 +45,25 @@ export function participationRoutes(controller: ParticipationController, auth: A
           summary: 'Register for a challenge',
           description:
             'Auto-approved when the challenge does not require screening; otherwise starts PENDING.',
+        },
+      },
+    )
+    .get(
+      '/organizations/:organizationId/challenges/:challengeId/participation/application-form',
+      ({ access, params }) => controller.getApplicationForm(access, params.organizationId, params.challengeId),
+      {
+        requireAuth: true,
+        orgContext: true,
+        challengeContext: true,
+        params: t.Object({ organizationId: Uuid, challengeId: Uuid }),
+        response: { 200: ApplicationFormResponse, ...CommonErrorResponses },
+        detail: {
+          tags: ['Participation'],
+          summary: "The challenge's published screening-application form schema, if any",
+          description:
+            'Deliberately not routed through the generic forms module (organization.view_private) ' +
+            '— a screening application exists specifically for prospective, not-yet-member ' +
+            'participants, so this only requires authentication, matching save/submit-application.',
         },
       },
     )

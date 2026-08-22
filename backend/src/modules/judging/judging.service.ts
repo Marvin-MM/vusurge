@@ -6,6 +6,7 @@ import { badRequest, conflict, ErrorCode, forbidden, notFound } from '../../shar
 import { newId } from '../../shared/ids'
 import type { OutboxWriter } from '../../shared/outbox'
 import { QueueName } from '../../shared/queue/queue-names'
+import { type RateLimiter, RateLimitPolicies } from '../../shared/rate-limit'
 import { generateSecureToken, hashToken } from '../../shared/security'
 import type { ChallengesRepository } from '../challenges/challenges.repository'
 import type { SubmissionsRepository } from '../submissions/submissions.repository'
@@ -331,6 +332,7 @@ export function createJudgingService(
   transactions: TenantTransactionRunner,
   audit: AuditWriter,
   outbox: OutboxWriter,
+  rateLimiter: RateLimiter,
 ): JudgingService {
   return {
     // --- staff invitations -------------------------------------------------
@@ -434,6 +436,16 @@ export function createJudgingService(
 
     async acceptStaffInvitation(access, token) {
       const { actor } = requireVerifiedActor(access)
+      // Mirrors organization invitation acceptance (invitations.service.ts):
+      // a staff-invitation token is exactly as brute-forceable a secret as an
+      // organization invitation token, and the policy for it already existed
+      // (`RateLimitPolicies.StaffInvitationAcceptance`) but was never wired
+      // up here.
+      await rateLimiter.enforce(RateLimitPolicies.StaffInvitationAcceptance, {
+        userId: actor.userId,
+        ipAddress: access.ipAddress,
+      })
+
       const tokenHash = hashToken(token)
 
       const invitation = await transactions.withSecretLookup((tx) =>

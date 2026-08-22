@@ -363,6 +363,98 @@ describe('participation registration', () => {
     )
     expect(mine.body?.status).toBe('PENDING')
   })
+
+  /**
+   * The screening form's schema must be visible to a genuinely non-member
+   * applicant — `participationPolicy: 'OPEN_AUTHENTICATED'` combined with
+   * `screeningRequired: true` is a real, valid combination (screening does
+   * not imply org membership), but the generic forms module's own
+   * `GET .../forms/*` routes all require `organization.view_private` (active
+   * membership). This dedicated, membership-light endpoint is what makes
+   * the screening application actually fillable by such an applicant.
+   */
+  test('application-form is visible to a non-member applicant, mirrors the published schema, and is null before publication', async () => {
+    const owner = await createVerifiedUser(app)
+    const organizationId = await approvedOrganization(owner.cookie)
+    const challengeId = await openChallenge(organizationId, owner.cookie, {
+      screeningRequired: true,
+      participationPolicy: 'OPEN_AUTHENTICATED',
+    })
+
+    const applicant = await createVerifiedUser(app)
+
+    // No form configured yet at all. A `null` handler return serializes as
+    // an empty response body (not literal JSON "null" text) — the test
+    // helper's body then stays the raw empty string rather than parsing to
+    // `null`, since it only JSON.parses a non-empty body. Real API clients
+    // (including the frontend's own axios-based helper) see the same empty
+    // body and must treat it as "no value" the same way, not via strict
+    // `=== null`.
+    const beforeAnyForm = await app.request<{ fields: unknown[] } | null>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/application-form`,
+      { cookies: applicant.cookie },
+    )
+    expect(beforeAnyForm.status).toBe(200)
+    expect(beforeAnyForm.body).toBeFalsy()
+
+    const definition = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms`,
+      {
+        body: { purpose: 'CHALLENGE_PARTICIPATION', challengeId, name: 'Screening' },
+        cookies: owner.cookie,
+      },
+    )
+    const schema = {
+      fields: [
+        { key: 'why', type: 'SHORT_TEXT', label: 'Why do you want to join?', required: true },
+      ],
+    }
+    const version = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms/${definition.body.id}/versions`,
+      { body: { schema }, cookies: owner.cookie },
+    )
+
+    // Created but not yet published — still empty/no-value to the applicant.
+    const beforePublish = await app.request<{ fields: unknown[] } | null>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/application-form`,
+      { cookies: applicant.cookie },
+    )
+    expect(beforePublish.body).toBeFalsy()
+
+    await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms/${definition.body.id}/versions/${version.body.id}/publish`,
+      { cookies: owner.cookie },
+    )
+
+    // The applicant holds no membership in this organization at all, and
+    // still sees the schema.
+    const membership = await app.infrastructure.transactions.withoutTenant((tx) =>
+      tx.organizationMembership.findFirst({ where: { organizationId, userId: applicant.userId } }),
+    )
+    expect(membership).toBeNull()
+
+    const afterPublish = await app.request<{ formDefinitionId: string; fields: { key: string }[] } | null>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/application-form`,
+      { cookies: applicant.cookie },
+    )
+    expect(afterPublish.status).toBe(200)
+    expect(afterPublish.body?.formDefinitionId).toBe(definition.body.id)
+    expect(afterPublish.body?.fields).toEqual(schema.fields)
+
+    // An unauthenticated visitor still cannot reach it — this is
+    // membership-light, not public.
+    const anonymous = await app.request(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/application-form`,
+    )
+    expect(anonymous.status).toBe(401)
+  })
 })
 
 describe('participation decisions', () => {

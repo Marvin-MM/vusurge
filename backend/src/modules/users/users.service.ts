@@ -33,6 +33,7 @@ export interface MeView {
   email: string
   emailVerified: boolean
   twoFactorEnabled: boolean
+  platformRole: 'PLATFORM_SUPERADMIN' | 'PLATFORM_SUPPORT_AGENT' | null
   displayName: string | null
   bio: string | null
   location: string | null
@@ -63,6 +64,7 @@ function toMeView(user: UserWithProfile): MeView {
     email: user.email,
     emailVerified: user.emailVerified,
     twoFactorEnabled: user.twoFactorEnabled,
+    platformRole: user.platformRole,
     displayName: user.profile?.displayName ?? null,
     bio: user.profile?.bio ?? null,
     location: user.profile?.location ?? null,

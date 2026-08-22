@@ -34,6 +34,11 @@ export const UploadAuthorizationResponse = t.Object({
   signature: t.String(),
   folder: t.String(),
   publicId: t.String(),
+  // Cloudinary's own delivery `type` ('upload' | 'authenticated') — this is
+  // signed into `signature` server-side, so the client MUST echo it back
+  // verbatim as a form field on the direct-to-Cloudinary upload POST, or
+  // Cloudinary recomputes a different signature and rejects with 401.
+  type: t.Union([t.Literal('upload'), t.Literal('authenticated')]),
   expiresAt: t.String(),
 })
 

@@ -21,10 +21,18 @@ export const SkillSummary = t.Object({
   isCustom: t.Boolean(),
 })
 
+const PlatformRoleSummary = t.Union([
+  t.Literal('PLATFORM_SUPERADMIN'),
+  t.Literal('PLATFORM_SUPPORT_AGENT'),
+  t.Null(),
+])
+
 export const MeResponse = t.Object({
   id: Uuid,
   email: t.String(),
   emailVerified: t.Boolean(),
+  /** The caller's own active platform role, if any. Most users have none. */
+  platformRole: PlatformRoleSummary,
   displayName: t.Union([t.String(), t.Null()]),
   bio: t.Union([t.String(), t.Null()]),
   location: t.Union([t.String(), t.Null()]),

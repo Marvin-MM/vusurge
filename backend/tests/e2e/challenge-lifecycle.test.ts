@@ -293,6 +293,86 @@ describe('challenge lifecycle', () => {
     expect(listProbe.status).toBe(404)
   })
 
+  test('an approved participant who is not an org member can view the challenge', async () => {
+    const owner = await createVerifiedUser(app)
+    const organizationId = await approvedOrganization(owner.cookie)
+
+    const created = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges`,
+      {
+        body: {
+          title: 'Participant Visible Challenge',
+          slug: 'participant-visible-challenge',
+          participationPolicy: 'OPEN_AUTHENTICATED',
+          visibility: 'PUBLIC',
+        },
+        cookies: owner.cookie,
+      },
+    )
+    expect(created.status).toBe(201)
+    const challengeId = created.body.id
+
+    const submissionDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const rescheduled = await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/reschedule`,
+      { body: { submissionDeadline, reason: 'Set the initial deadline.' }, cookies: owner.cookie },
+    )
+    expect(rescheduled.status).toBe(200)
+    const published = await app.request<{ status: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/publish`,
+      { body: {}, cookies: owner.cookie },
+    )
+    expect(published.status).toBe(200)
+    expect(published.body.status).toBe('OPEN')
+
+    // The participant holds no organization membership at all: the only
+    // relationship is the APPROVED participation on this one challenge.
+    const participant = await createVerifiedUser(app)
+    const registered = await app.request<{ status: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/register`,
+      { body: {}, cookies: participant.cookie },
+    )
+    expect(registered.status).toBe(201)
+    expect(registered.body.status).toBe('APPROVED')
+
+    const view = await app.request<{ id: string }>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}`,
+      { cookies: participant.cookie },
+    )
+    expect(view.status).toBe(200)
+    expect(view.body.id).toBe(challengeId)
+
+    // The narrow participation grant is scoped to that one challenge: a second
+    // challenge in the same organization stays invisible.
+    const otherChallenge = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges`,
+      { body: { title: 'Other Challenge', slug: 'other-challenge' }, cookies: owner.cookie },
+    )
+    expect(otherChallenge.status).toBe(201)
+    const otherView = await app.request(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${otherChallenge.body.id}`,
+      { cookies: participant.cookie },
+    )
+    expect(otherView.status).toBe(404)
+
+    // An authenticated user with no participation at all still gets the
+    // existence-preserving 404, not a 403.
+    const stranger = await createVerifiedUser(app)
+    const strangerView = await app.request(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}`,
+      { cookies: stranger.cookie },
+    )
+    expect(strangerView.status).toBe(404)
+  })
+
   test('reopen only works from CLOSED, and requires a future deadline', async () => {
     const owner = await createVerifiedUser(app)
     const organizationId = await approvedOrganization(owner.cookie)

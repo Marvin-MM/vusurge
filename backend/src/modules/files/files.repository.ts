@@ -1,7 +1,11 @@
 import type { PrismaTransactionClient } from '../../shared/database'
 import { newId } from '../../shared/ids'
 
-export type FilePurpose = 'SUBMISSION_PRESENTATION' | 'SUPPORT_ATTACHMENT' | 'PORTFOLIO_EVIDENCE'
+export type FilePurpose =
+  | 'SUBMISSION_PRESENTATION'
+  | 'SUPPORT_ATTACHMENT'
+  | 'PORTFOLIO_EVIDENCE'
+  | 'FORM_ATTACHMENT'
 export type StoredObjectState =
   | 'PENDING_UPLOAD'
   | 'QUARANTINED'

@@ -38,6 +38,18 @@ async function main(): Promise<void> {
     fetch: handle,
   })
 
+  // Elysia's own `.listen()` assigns `app.server` so route handlers can read
+  // `context.server` (which falls back to `app.server` — see the Bun adapter's
+  // compose step) and call `server.requestIP(request)` for the caller's IP.
+  // Bypassing `.listen()` to route every request through withRequestScope
+  // (see comment above) means that assignment never happens on its own, so
+  // it is replicated here. Without it, `server` is always null in every
+  // derive/handler, `ipAddress` resolves to undefined everywhere, and every
+  // IP-scoped rate-limit policy with `riskLevel: 'high'` (invitation
+  // acceptance, staff-invitation acceptance, password reset) fails closed
+  // on every single request — not a slowdown, a hard block.
+  app.server = server
+
   logger.info(
     {
       host: config.app.host,

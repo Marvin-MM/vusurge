@@ -29,6 +29,16 @@ export const SaveApplicationBody = t.Object({
   responseData: t.Record(t.String({ maxLength: 120 }), t.Unknown()),
 })
 
+/** Mirrors forms.dto.ts's field-definition shape (see forms.service.ts's
+ * FIELD_TYPES) without importing across module boundaries — kept as
+ * `t.Unknown()` per field the same way CreateFormVersionBody does, since the
+ * authoritative shape validation already happened when the version was
+ * created. */
+export const ApplicationFormResponse = t.Union([
+  t.Object({ formDefinitionId: Uuid, fields: t.Array(t.Unknown()) }),
+  t.Null(),
+])
+
 export const ParticipationApplicationDraftResponse = t.Object({
   id: Uuid,
   formVersionId: Uuid,

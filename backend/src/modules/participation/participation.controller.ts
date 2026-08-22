@@ -49,6 +49,11 @@ export function createParticipationController(service: ParticipationService) {
       return serializeSelf(row)
     },
 
+    async getApplicationForm(access: AccessContext, organizationId: string, challengeId: string) {
+      requireActor(access)
+      return service.getApplicationForm(access, organizationId, challengeId)
+    },
+
     async saveApplication(
       access: AccessContext,
       organizationId: string,

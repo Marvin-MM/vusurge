@@ -33,6 +33,7 @@ const RESOURCE_TYPE: Readonly<Record<FilePurpose, string>> = {
   SUBMISSION_PRESENTATION: 'submission_version',
   SUPPORT_ATTACHMENT: 'support_ticket',
   PORTFOLIO_EVIDENCE: 'innovation',
+  FORM_ATTACHMENT: 'form_definition',
 }
 
 const EXTENSIONS_BY_MIME: Readonly<Record<string, readonly string[]>> = {
@@ -208,6 +209,29 @@ export function createFilesService(
         ticket.assignedToUserId === actor.userId ||
         permission(access, Permission.PlatformSupport)
       if (!mayAccess) throw notFound()
+      return
+    }
+
+    if (purpose === 'FORM_ATTACHMENT') {
+      const form = await tx.formDefinition.findFirst({
+        where: { id: resourceId, organizationId },
+      })
+      if (form === null || (challengeId !== null && form.challengeId !== challengeId)) {
+        throw notFound()
+      }
+      if (operation === 'manage') {
+        // Attaching a file while filling out a response needs the same
+        // access as submitting the response itself (any active member) —
+        // see forms.service.ts's submitResponse.
+        if (!permission(access, Permission.OrganizationViewPrivate)) throw notFound()
+        return
+      }
+      // Downloading is deliberately staff-only: this generic resource-level
+      // authorizer only knows the form (shared by every respondent), not
+      // which specific response/file belongs to the requesting user, so
+      // there is no safe way here to let a respondent re-download only
+      // their own attachment without leaking access to everyone else's.
+      if (!permission(access, Permission.OrganizationManageForms)) throw notFound()
       return
     }
 

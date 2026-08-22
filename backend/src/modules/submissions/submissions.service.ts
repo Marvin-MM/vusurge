@@ -8,6 +8,7 @@ import { newId } from '../../shared/ids'
 import type { OutboxWriter } from '../../shared/outbox'
 import { QueueName } from '../../shared/queue'
 import type { ChallengesRepository } from '../challenges/challenges.repository'
+import type { JudgingRepository } from '../judging/judging.repository'
 import type { MediaRepository } from '../media/media.repository'
 import type { OrganizationsRepository } from '../organizations/organizations.repository'
 import type { TeamsRepository } from '../teams/teams.repository'
@@ -113,6 +114,7 @@ export function createSubmissionsService(
   challengesRepository: ChallengesRepository,
   organizationsRepository: OrganizationsRepository,
   mediaRepository: MediaRepository,
+  judgingRepository: JudgingRepository,
   transactions: TenantTransactionRunner,
   audit: AuditWriter,
   outbox: OutboxWriter,
@@ -284,7 +286,25 @@ export function createSubmissionsService(
         )
         const isOwner = member !== null && member.teamId === submission.teamId
         if (!isOwner) {
-          authorize(access, Permission.SubmissionViewAll)
+          const staffAssignment = await judgingRepository.findStaffAssignmentByChallengeAndUser(
+            tx,
+            organizationId,
+            challengeId,
+            actor.userId,
+          )
+          const judgeAssignments =
+            staffAssignment === null || staffAssignment.status !== 'ACTIVE'
+              ? []
+              : await judgingRepository.listJudgeAssignmentsForStaff(
+                  tx,
+                  organizationId,
+                  staffAssignment.id,
+                )
+          const isAssignedJudge = judgeAssignments.some(
+            (assignment) =>
+              assignment.submissionId === submissionId && assignment.status === 'ASSIGNED',
+          )
+          if (!isAssignedJudge) authorize(access, Permission.SubmissionViewAll)
         }
 
         return detail(tx, organizationId, submission)

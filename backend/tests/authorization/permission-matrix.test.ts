@@ -317,6 +317,13 @@ describe('challenge-scoped staff', () => {
     expect(checkPermission(judgeContext, Permission.JudgingScoreAssigned).allowed).toBe(true)
   })
 
+  test('a judge can view the challenge and its rubric to know what they are scoring against', () => {
+    // Without challenge.view a judge could never fetch rubric criteria
+    // through any real endpoint, making it impossible to render a scoring
+    // form at all.
+    expect(checkPermission(judgeContext, Permission.ChallengeView).allowed).toBe(true)
+  })
+
   test('a judge gains no organization access whatsoever', () => {
     // The whole point of challenge-scoped staff: a sponsor's judge must not
     // gain the member directory, other challenges, analytics, or the audit log.

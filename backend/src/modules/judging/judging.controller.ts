@@ -66,6 +66,7 @@ function serializeJudgeAssignment(row: JudgeAssignmentRow) {
   return {
     id: row.id,
     challengeId: row.challengeId,
+    organizationId: row.organizationId,
     staffAssignmentId: row.staffAssignmentId,
     submissionId: row.submissionId,
     status: row.status,

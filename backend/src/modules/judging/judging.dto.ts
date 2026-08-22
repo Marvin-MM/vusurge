@@ -93,6 +93,7 @@ export const CreateJudgeAssignmentBody = t.Object({ staffAssignmentId: Uuid, sub
 export const JudgeAssignmentResponse = t.Object({
   id: Uuid,
   challengeId: Uuid,
+  organizationId: Uuid,
   staffAssignmentId: Uuid,
   submissionId: Uuid,
   status: JudgeAssignmentStatus,
@@ -113,6 +114,17 @@ const CriterionScoreSchema = t.Object({
   comment: t.Optional(t.String({ maxLength: 2000 })),
 })
 
+// Output only: some scorecard read paths (the raw-SQL `app_find_my_scorecard`
+// function backing the judge's own GET/PATCH/submit routes) return `comment`
+// as an explicit `null` rather than omitting the key, unlike the
+// Prisma-relation path which normalizes null away. The response schema must
+// accept both shapes.
+const CriterionScoreOutputSchema = t.Object({
+  criterionKey: t.String({ minLength: 1, maxLength: 60 }),
+  score: t.Integer(),
+  comment: t.Optional(t.Union([t.String({ maxLength: 2000 }), t.Null()])),
+})
+
 export const SaveScorecardBody = t.Object({
   criterionScores: t.Array(CriterionScoreSchema, { maxItems: 30 }),
 })
@@ -122,7 +134,7 @@ export const ScorecardResponse = t.Object({
   judgeAssignmentId: Uuid,
   rubricVersionId: Uuid,
   status: ScorecardStatus,
-  criterionScores: t.Array(CriterionScoreSchema),
+  criterionScores: t.Array(CriterionScoreOutputSchema),
   totalScore: t.Union([t.Integer(), t.Null()]),
   maxPossibleScore: t.Union([t.Integer(), t.Null()]),
   submittedAt: t.Union([t.String(), t.Null()]),
@@ -183,7 +195,7 @@ export const SubmissionResultListResponse = t.Array(SubmissionResultResponse)
 export const RetractResultsBody = t.Object({ reason: ActionReason })
 
 export const FeedbackEntryResponse = t.Object({
-  criterionScores: t.Array(CriterionScoreSchema),
+  criterionScores: t.Array(CriterionScoreOutputSchema),
   totalScore: t.Union([t.Integer(), t.Null()]),
   maxPossibleScore: t.Union([t.Integer(), t.Null()]),
 })

@@ -5,7 +5,7 @@ import type { AppConfig } from '../../shared/config/config.schema'
 import type { PrismaTransactionClient, TenantTransactionRunner } from '../../shared/database'
 import { badRequest, conflict, ErrorCode, forbidden, notFound } from '../../shared/errors'
 import { newId } from '../../shared/ids'
-import type { ImageDeliveryAuthorization, ImageProvider } from '../../shared/images'
+import type { ImageDeliveryAuthorization, ImageDeliveryType, ImageProvider } from '../../shared/images'
 import type { OutboxWriter } from '../../shared/outbox'
 import { QueueName } from '../../shared/queue'
 import { type RateLimiter, RateLimitPolicies } from '../../shared/rate-limit'
@@ -115,6 +115,7 @@ export interface UploadAuthorizationResult {
   signature: string
   folder: string
   publicId: string
+  type: ImageDeliveryType
   expiresAt: Date
 }
 
@@ -437,6 +438,7 @@ export function createMediaService(
         signature: authorization.signature,
         folder: authorization.folder,
         publicId: authorization.publicId,
+        type: authorization.type,
         expiresAt,
       }
     },

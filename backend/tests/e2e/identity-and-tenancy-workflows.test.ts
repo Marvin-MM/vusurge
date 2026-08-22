@@ -205,8 +205,11 @@ describe('workflow 3: a user with zero organizations remains valid', () => {
   test('an authenticated user with no memberships can still use the platform', async () => {
     const lonely = await createVerifiedUser(app)
 
-    const me = await app.request('GET', '/api/v1/me', { cookies: lonely.cookie })
+    const me = await app.request<{ platformRole: string | null }>('GET', '/api/v1/me', {
+      cookies: lonely.cookie,
+    })
     expect(me.status).toBe(200)
+    expect(me.body.platformRole).toBeNull()
 
     const organizations = await app.request<unknown[]>('GET', '/api/v1/me/organizations', {
       cookies: lonely.cookie,

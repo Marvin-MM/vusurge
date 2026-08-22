@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { v2 as cloudinary } from 'cloudinary'
 import { loadConfig } from '../../src/shared/config'
 import { CloudinaryImageProvider } from '../../src/shared/images'
 import { createLogger } from '../../src/shared/logging'
@@ -34,6 +35,36 @@ describe('Cloudinary signed URLs', () => {
     expect(authorization.publicId).toBe('018f0000-0000-7000-8000-000000000001')
     expect(authorization.folder).toBe('innovation-platform/user_avatar')
     expect(authorization.signature).not.toBeEmpty()
+  })
+
+  test('every param folded into the signature is present on the returned authorization', () => {
+    // Regression: `createUploadAuthorization` used to sign `type` (Cloudinary's
+    // delivery type) but the HTTP layer built its client-facing response from a
+    // hand-picked field list that omitted it — the client could never echo
+    // `type` back on the actual upload POST, so Cloudinary recomputed a
+    // different signature from a strict subset of what the server signed and
+    // rejected every real upload with 401 Invalid Signature. This never
+    // surfaced in e2e tests because they run against `NullImageProvider`
+    // (never a real Cloudinary round trip) — the only way to catch it is to
+    // independently re-derive the signature from exactly what a client would
+    // receive and see, and prove it still matches.
+    const authorization = provider().createUploadAuthorization({
+      publicId: '018f0000-0000-7000-8000-000000000002',
+      folder: 'innovation-platform/organization_logo',
+      deliveryType: 'authenticated',
+    })
+
+    const recomputed = cloudinary.utils.api_sign_request(
+      {
+        timestamp: authorization.timestamp,
+        public_id: authorization.publicId,
+        folder: authorization.folder,
+        type: authorization.type,
+      },
+      config.cloudinary.apiSecret ?? '',
+    )
+
+    expect(recomputed).toBe(authorization.signature)
   })
 
   test('authenticated delivery is signed and expires at the configured deadline', () => {

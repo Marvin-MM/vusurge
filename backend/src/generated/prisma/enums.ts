@@ -97,7 +97,8 @@ export type StoredObjectStatus = (typeof StoredObjectStatus)[keyof typeof Stored
 export const FileAssetPurpose = {
   SUBMISSION_PRESENTATION: 'SUBMISSION_PRESENTATION',
   SUPPORT_ATTACHMENT: 'SUPPORT_ATTACHMENT',
-  PORTFOLIO_EVIDENCE: 'PORTFOLIO_EVIDENCE'
+  PORTFOLIO_EVIDENCE: 'PORTFOLIO_EVIDENCE',
+  FORM_ATTACHMENT: 'FORM_ATTACHMENT'
 } as const
 
 export type FileAssetPurpose = (typeof FileAssetPurpose)[keyof typeof FileAssetPurpose]

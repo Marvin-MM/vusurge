@@ -233,7 +233,7 @@ describe('judging: rubrics and scoring', () => {
     expect(assignment.body.status).toBe('ASSIGNED')
 
     // The judge sees it in their own cross-organization assignment list.
-    const myAssignments = await app.request<{ id: string }[]>(
+    const myAssignments = await app.request<{ id: string; organizationId: string; challengeId: string }[]>(
       'GET',
       '/api/v1/judging/assignments',
       {
@@ -242,6 +242,25 @@ describe('judging: rubrics and scoring', () => {
     )
     expect(myAssignments.status).toBe(200)
     expect(myAssignments.body.map((a) => a.id)).toContain(assignment.body.id)
+    // organizationId must be present so a judge UI can resolve org-scoped
+    // detail routes from a bare assignment (previously fetched but dropped
+    // by the serializer).
+    const ownAssignment = myAssignments.body.find((a) => a.id === assignment.body.id)
+    expect(ownAssignment?.organizationId).toBe(organizationId)
+    expect(ownAssignment?.challengeId).toBe(challengeId)
+
+    // An assigned judge can view the submission they're scoring, even
+    // though they hold no organization membership and no
+    // submission.view_all permission — access is granted purely by the
+    // active judge assignment (previously a 404 for any non-owner/non-staff
+    // actor, which made scoring impossible in practice).
+    const judgeSubmissionView = await app.request<{ id: string }>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/submissions/${submissionId}`,
+      { cookies: judge.cookie },
+    )
+    expect(judgeSubmissionView.status).toBe(200)
+    expect(judgeSubmissionView.body.id).toBe(submissionId)
 
     // A different, non-owning judge cannot see or score this assignment.
     const otherJudge = await inviteAndAcceptJudge(owner, organizationId, challengeId)
@@ -251,6 +270,15 @@ describe('judging: rubrics and scoring', () => {
       { cookies: otherJudge.cookie },
     )
     expect(forbiddenGet.status).toBe(404)
+
+    // ...nor can they view the submission itself — they hold a judge
+    // assignment for this challenge, but not for this specific submission.
+    const otherJudgeSubmissionView = await app.request(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/submissions/${submissionId}`,
+      { cookies: otherJudge.cookie },
+    )
+    expect(otherJudgeSubmissionView.status).toBe(403)
 
     const draft = await app.request<{ status: string }>(
       'PATCH',
@@ -262,6 +290,21 @@ describe('judging: rubrics and scoring', () => {
     )
     expect(draft.status).toBe(200)
     expect(draft.body.status).toBe('DRAFT')
+
+    // Re-fetching the scorecard must succeed even though the just-saved
+    // criterion score has no comment. GET .../scorecard is served by a
+    // different (raw-SQL) repository path than the PATCH/submit responses,
+    // which previously returned `comment: null` instead of omitting the key
+    // — a shape the response schema rejected outright with a 422, making it
+    // impossible for a judge to ever reload their own in-progress scorecard.
+    const reGet = await app.request<{ criterionScores: { criterionKey: string; comment?: string | null }[] }>(
+      'GET',
+      `/api/v1/judging/assignments/${assignment.body.id}/scorecard`,
+      { cookies: judge.cookie },
+    )
+    expect(reGet.status).toBe(200)
+    const innovationScore = reGet.body.criterionScores.find((c) => c.criterionKey === 'innovation')
+    expect(innovationScore?.comment ?? null).toBeNull()
 
     // Submitting without every criterion scored is rejected.
     const incompleteSubmit = await app.request(

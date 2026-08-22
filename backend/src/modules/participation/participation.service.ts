@@ -29,6 +29,22 @@ export interface ParticipationService {
     challengeId: string,
     input: RegisterInput,
   ): Promise<ParticipationRow>
+  /**
+   * The published CHALLENGE_PARTICIPATION screening form's schema for this
+   * challenge, or null if none is configured/published. Deliberately NOT
+   * routed through the generic forms module's own `getDefinition`/
+   * `listVersions` (both gated on `organization.view_private`, i.e. active
+   * membership) — a screening application exists specifically to let a
+   * *prospective* participant apply, and `participationPolicy` can be
+   * `APPROVED_CHALLENGE_PARTICIPANTS` (screening required) independently of
+   * org membership. Matches `saveApplication`/`submitApplication`'s own
+   * posture: any authenticated, verified user, no org role required.
+   */
+  getApplicationForm(
+    access: AccessContext,
+    organizationId: string,
+    challengeId: string,
+  ): Promise<{ formDefinitionId: string; fields: unknown[] } | null>
   saveApplication(
     access: AccessContext,
     organizationId: string,
@@ -265,6 +281,36 @@ export function createParticipationService(
                 : `Registered for "${challenge.title}".`,
           })
           return participation
+        },
+        { actorUserId: actor.userId },
+      )
+    },
+
+    async getApplicationForm(access, organizationId, challengeId) {
+      const actor = access.actor
+      if (actor === null || actor === undefined) throw forbidden()
+
+      return transactions.withTenant(
+        organizationId,
+        async (tx) => {
+          const challenge = await challengesRepository.findById(tx, organizationId, challengeId)
+          if (challenge === null) throw notFound('Challenge not found.')
+
+          const definition = await formsRepository.findDefinitionByChallenge(
+            tx,
+            organizationId,
+            challengeId,
+            'CHALLENGE_PARTICIPATION',
+          )
+          if (definition === null) return null
+
+          const version = await formsRepository.findPublishedVersion(tx, organizationId, definition.id)
+          if (version === null) return null
+
+          return {
+            formDefinitionId: definition.id,
+            fields: (version.schema as { fields: unknown[] }).fields,
+          }
         },
         { actorUserId: actor.userId },
       )

@@ -62,13 +62,20 @@ describe('media: user avatar', () => {
   test('upload-authorization → confirm → delivery → delete, self-service', async () => {
     const user = await createVerifiedUser(app)
 
-    const authorization = await app.request<{ assetId: string; publicId: string }>(
+    const authorization = await app.request<{ assetId: string; publicId: string; type: string }>(
       'POST',
       '/api/v1/media/images/upload-authorization',
       { body: { purpose: 'USER_AVATAR', mimeType: 'image/png' }, cookies: user.cookie },
     )
     expect(authorization.status).toBe(200)
     expect(authorization.body.publicId).toBe(authorization.body.assetId)
+    // Regression: `type` is folded into the signature server-side, so it must
+    // round-trip to the client verbatim — otherwise the client can never echo
+    // it back on the real Cloudinary upload POST and every upload fails with
+    // 401 Invalid Signature (never caught by this suite's NullImageProvider
+    // stand-in, since it doesn't call real Cloudinary — but the response DTO
+    // requiring this field is enough to catch it being silently dropped).
+    expect(authorization.body.type).toBe('authenticated')
 
     const confirmed = await app.request<{ status: string; format: string | null }>(
       'POST',

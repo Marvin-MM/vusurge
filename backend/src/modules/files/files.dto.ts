@@ -5,6 +5,7 @@ export const FilePurposeDto = t.Union([
   t.Literal('SUBMISSION_PRESENTATION'),
   t.Literal('SUPPORT_ATTACHMENT'),
   t.Literal('PORTFOLIO_EVIDENCE'),
+  t.Literal('FORM_ATTACHMENT'),
 ])
 
 export const FileUploadAuthorizationBody = t.Object({

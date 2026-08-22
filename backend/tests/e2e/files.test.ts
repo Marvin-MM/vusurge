@@ -324,4 +324,152 @@ describe('private files', () => {
     expect(download.status).toBe(409)
     expect(download.body).toMatchObject({ code: 'FILE_QUARANTINED' })
   }, 30_000)
+
+  /**
+   * A FILE_REF form field's `uploadPurpose` is always 'FORM_ATTACHMENT' (the
+   * only value forms.service.ts's schema validation accepts), but until this
+   * fix that purpose had no backing entry in this module's own FilePurpose
+   * enum/authorization — every upload attempt would fail. Covers: an
+   * ordinary member (not just staff) can upload — matching submitResponse's
+   * own organization.view_private gate — an unaffiliated outsider cannot
+   * even get upload authorization, and downloading is staff-only
+   * (organization.manage_forms) since this resource-level authorizer only
+   * knows the form, not which respondent a given file belongs to.
+   */
+  test('FILE_REF form fields can be fulfilled via the FORM_ATTACHMENT purpose', async () => {
+    const owner = await createVerifiedUser(app)
+    const application = await app.request<{ id: string }>(
+      'POST',
+      '/api/v1/organization-applications',
+      {
+        body: {
+          name: `Form Attachment Org ${crypto.randomUUID()}`,
+          requestedSlug: `form-attach-${crypto.randomUUID().slice(0, 8)}`,
+          organizationType: 'COMPANY',
+          description: 'FORM_ATTACHMENT fixture organization.',
+          requesterRelationship: 'Founder',
+          requestedVisibility: 'PRIVATE',
+          acceptedTermsVersion: '1.0',
+        },
+        headers: { 'idempotency-key': crypto.randomUUID() },
+        cookies: owner.cookie,
+      },
+    )
+    const superadmin = await createPlatformSuperadmin(app)
+    const approval = await app.request<{ organizationId: string }>(
+      'POST',
+      `/api/v1/platform/organization-applications/${application.body.id}/approve`,
+      { body: {}, cookies: superadmin.cookie },
+    )
+    const organizationId = approval.body.organizationId
+
+    const member = await createVerifiedUser(app)
+    const joinCode = await app.request<{ plaintextCode: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/join-codes`,
+      { body: {}, cookies: owner.cookie },
+    )
+    const redeemed = await app.request('POST', '/api/v1/join-codes/redeem', {
+      body: { code: joinCode.body.plaintextCode },
+      cookies: member.cookie,
+    })
+    expect(redeemed.status).toBe(200)
+
+    const outsider = await createVerifiedUser(app)
+
+    const definition = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms`,
+      { body: { purpose: 'MENTOR_JUDGE_APPLICATION', name: 'Mentor Application' }, cookies: owner.cookie },
+    )
+    const schema = {
+      fields: [
+        { key: 'resume', type: 'FILE_REF', label: 'Resume', required: true, uploadPurpose: 'FORM_ATTACHMENT' },
+      ],
+    }
+    const version = await app.request<{ id: string }>(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms/${definition.body.id}/versions`,
+      { body: { schema }, cookies: owner.cookie },
+    )
+    expect(version.status).toBe(201)
+    await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms/${definition.body.id}/versions/${version.body.id}/publish`,
+      { cookies: owner.cookie },
+    )
+
+    // An unaffiliated outsider cannot get upload authorization for this org's form.
+    const outsiderAuth = await app.request('POST', '/api/v1/files/upload-authorization', {
+      body: {
+        purpose: 'FORM_ATTACHMENT',
+        organizationId,
+        resourceId: definition.body.id,
+        fileName: 'resume.pdf',
+        contentType: 'application/pdf',
+        bytes: 4,
+      },
+      cookies: outsider.cookie,
+    })
+    expect(outsiderAuth.status).toBe(404)
+
+    // An ordinary member (not just staff) can upload — matches submitResponse's own gate.
+    const memberAuth = await app.request<UploadAuthorization>(
+      'POST',
+      '/api/v1/files/upload-authorization',
+      {
+        body: {
+          purpose: 'FORM_ATTACHMENT',
+          organizationId,
+          resourceId: definition.body.id,
+          fileName: 'resume.pdf',
+          contentType: 'application/pdf',
+          bytes: 4,
+        },
+        cookies: member.cookie,
+      },
+    )
+    if (memberAuth.status !== 200) {
+      throw new Error(`Upload authorization failed (${memberAuth.status}): ${JSON.stringify(memberAuth.body)}`)
+    }
+    expect(memberAuth.status).toBe(200)
+
+    const bytes = new TextEncoder().encode('%PDF')
+    const upload = await fetch(memberAuth.body.uploadUrl, {
+      method: 'PUT',
+      headers: memberAuth.body.requiredHeaders,
+      body: bytes,
+    })
+    expect(upload.status).toBeLessThan(300)
+
+    const confirmed = await app.request<ConfirmedFile>('POST', '/api/v1/files/confirm', {
+      body: { organizationId, storedObjectId: memberAuth.body.storedObjectId },
+      cookies: member.cookie,
+    })
+    expect(confirmed.status).toBe(202)
+    const fileId = confirmed.body.id
+
+    const response = await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/forms/${definition.body.id}/responses`,
+      { body: { responseData: { resume: fileId } }, cookies: member.cookie },
+    )
+    expect(response.status).toBe(201)
+
+    // Downloading is staff-only (organization.manage_forms) — the uploading
+    // member themselves cannot re-download via this generic resource path.
+    const memberDownload = await app.request('GET', `/api/v1/files/${fileId}/download`, {
+      cookies: member.cookie,
+    })
+    expect(memberDownload.status).toBe(404)
+
+    // The file is still QUARANTINED (no scan has run in this test), so
+    // staff access resolves as far as the scan-status gate (409), not a
+    // 404 — proving the authorization boundary itself, not scan state, is
+    // what distinguished the member's 404 above from staff's access here.
+    const ownerDownload = await app.request('GET', `/api/v1/files/${fileId}/download`, {
+      cookies: owner.cookie,
+    })
+    expect(ownerDownload.status).toBe(409)
+  })
 })

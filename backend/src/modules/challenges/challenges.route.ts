@@ -70,6 +70,12 @@ export function challengesRoutes(controller: ChallengesController, auth: AuthPlu
         {
           requireAuth: true,
           orgContext: true,
+          // An APPROVED participant of this challenge holds `challenge.view`
+          // independently of organization membership, so the challenge-scoped
+          // context must be resolved for the policy to see that grant at all —
+          // without it a non-member participant is indistinguishable from a
+          // caller with no relationship and gets the existence-preserving 404.
+          challengeContext: true,
           params: t.Object({ organizationId: Uuid, challengeId: Uuid }),
           response: { 200: ChallengeResponse, ...CommonErrorResponses },
           detail: { tags: ['Challenges'], summary: 'Get a challenge' },

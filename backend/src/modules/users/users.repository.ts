@@ -15,6 +15,14 @@ export interface UserWithProfile {
   email: string
   emailVerified: boolean
   twoFactorEnabled: boolean
+  /**
+   * The caller's own active platform role, if any — most users have none.
+   * Exposed on `/me` so the frontend can decide whether to offer the
+   * platform-admin surface at all, mirroring the same self-descriptive
+   * purpose `/meta/capabilities` serves for feature flags. Never another
+   * user's role; this is always resolved for the authenticated caller only.
+   */
+  platformRole: 'PLATFORM_SUPERADMIN' | 'PLATFORM_SUPPORT_AGENT' | null
   profile: {
     displayName: string | null
     bio: string | null
@@ -150,16 +158,28 @@ export function createUsersRepository(): UsersRepository {
               skill: { select: { name: true } },
             },
           },
+          platformRoles: {
+            where: { revokedAt: null },
+            select: { role: true },
+          },
         },
       })
 
       if (user === null) return null
+
+      const activeRoles = user.platformRoles.map((entry) => entry.role)
+      const platformRole = activeRoles.includes('PLATFORM_SUPERADMIN')
+        ? 'PLATFORM_SUPERADMIN'
+        : activeRoles.includes('PLATFORM_SUPPORT_AGENT')
+          ? 'PLATFORM_SUPPORT_AGENT'
+          : null
 
       return {
         id: user.id,
         email: user.email,
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
+        platformRole,
         profile: user.profile,
         skills: user.skills.map((entry) => ({
           skillId: entry.skillId,
