@@ -16,3 +16,4 @@ coverage/
 # editor
 .idea/
 .vscode/
+.claude/
