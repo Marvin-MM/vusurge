@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(git init *)",
-      "Read(//tmp/**)",
-      "Bash(curl -sL https://raw.githubusercontent.com/better-auth/better-auth/main/docs/content/docs/basic-usage.mdx -o basic-usage.mdx)"
-    ]
-  }
-}
