@@ -91,6 +91,12 @@ export interface UsersService {
   listMyTeamInvitations(userId: string): Promise<MyTeamInvitationRow[]>
   listMyChallengeStaffInvitations(email: string): Promise<MyChallengeStaffInvitationRow[]>
   getPublicProfile(targetUserId: string, viewerUserId: string | null): Promise<PublicProfileView>
+  getPendingAccountDeletion(userId: string): Promise<{
+    id: string
+    status: 'PENDING'
+    requestedAt: Date
+    eligibleAt: Date
+  } | null>
   requestAccountDeletion(
     userId: string,
     reason: string | undefined,
@@ -239,6 +245,17 @@ export function createUsersService(
           isCustom: entry.skillId === null,
         })),
       }
+    },
+
+    async getPendingAccountDeletion(userId) {
+      return transactions.withoutTenant(async (tx) => {
+        const request = await tx.accountDeletionRequest.findFirst({
+          where: { userId, status: 'PENDING' },
+          orderBy: { requestedAt: 'desc' },
+          select: { id: true, status: true, requestedAt: true, eligibleAt: true },
+        })
+        return request === null ? null : { ...request, status: 'PENDING' as const }
+      })
     },
 
     async requestAccountDeletion(userId, reason, transaction) {

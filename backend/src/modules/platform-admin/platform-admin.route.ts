@@ -4,10 +4,18 @@ import { CommonErrorResponses, Uuid } from '../../shared/http'
 import type { PlatformAdminController } from './platform-admin.controller'
 import {
   AuditSummaryResponse,
+  PlatformAnalyticsSummaryResponse,
   PlatformArchiveOrganizationBody,
+  PlatformChallengeListQuery,
+  PlatformChallengeListResponse,
   PlatformOrganizationListQuery,
   PlatformOrganizationListResponse,
   PlatformOrganizationResponse,
+  PlatformRoleChangeBody,
+  PlatformSettingsResponse,
+  PlatformUserListQuery,
+  PlatformUserListResponse,
+  PlatformUserResponse,
   ReinstateOrganizationBody,
   SuspendOrganizationBody,
 } from './platform-admin.dto'
@@ -15,6 +23,81 @@ import {
 export function platformAdminRoutes(controller: PlatformAdminController, auth: AuthPlugin) {
   return new Elysia({ name: 'platform-admin-routes', prefix: '/platform' })
     .use(auth)
+    .get(
+      '/users',
+      ({ access, query }) =>
+        controller.listUsers(access, { search: query.search?.trim(), role: query.role }, query),
+      {
+        requireAuth: true,
+        query: PlatformUserListQuery,
+        response: { 200: PlatformUserListResponse, ...CommonErrorResponses },
+        detail: { tags: ['Platform'], summary: 'List users and active platform roles' },
+      },
+    )
+    .post(
+      '/users/:userId/roles/grant',
+      ({ access, params, body }) =>
+        controller.grantRole(access, params.userId, body.role, body.reason),
+      {
+        requireAuth: true,
+        params: t.Object({ userId: Uuid }),
+        body: PlatformRoleChangeBody,
+        response: { 200: PlatformUserResponse, ...CommonErrorResponses },
+        detail: {
+          tags: ['Platform'],
+          summary: 'Grant a platform role',
+          description: 'Requires a fresh session; superadmin grants require target-user 2FA.',
+        },
+      },
+    )
+    .post(
+      '/users/:userId/roles/revoke',
+      ({ access, params, body }) =>
+        controller.revokeRole(access, params.userId, body.role, body.reason),
+      {
+        requireAuth: true,
+        params: t.Object({ userId: Uuid }),
+        body: PlatformRoleChangeBody,
+        response: { 200: PlatformUserResponse, ...CommonErrorResponses },
+        detail: {
+          tags: ['Platform'],
+          summary: 'Revoke a platform role',
+          description: 'Requires a fresh session and preserves the final-superadmin invariant.',
+        },
+      },
+    )
+    .get(
+      '/challenges',
+      ({ access, query }) =>
+        controller.listChallenges(
+          access,
+          {
+            search: query.search?.trim(),
+            status: query.status,
+            visibility: query.visibility,
+          },
+          query,
+        ),
+      {
+        requireAuth: true,
+        query: PlatformChallengeListQuery,
+        response: { 200: PlatformChallengeListResponse, ...CommonErrorResponses },
+        detail: { tags: ['Platform'], summary: 'List all challenges across organizations' },
+      },
+    )
+    .get('/analytics/summary', ({ access }) => controller.analyticsSummary(access), {
+      requireAuth: true,
+      response: { 200: PlatformAnalyticsSummaryResponse, ...CommonErrorResponses },
+      detail: { tags: ['Platform'], summary: 'Get a platform-wide operational summary' },
+    })
+    .get('/settings', ({ access }) => controller.getSettings(access), {
+      requireAuth: true,
+      response: { 200: PlatformSettingsResponse, ...CommonErrorResponses },
+      detail: {
+        tags: ['Platform'],
+        summary: 'Get non-secret deployment settings and feature flags',
+      },
+    })
     .get(
       '/organizations',
       ({ access, query }) => controller.listOrganizations(access, query.status, query),

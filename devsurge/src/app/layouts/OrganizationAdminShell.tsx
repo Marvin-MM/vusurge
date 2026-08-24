@@ -8,10 +8,7 @@ import {
   Send,
   Gavel,
   BarChart3,
-  Download,
-  History,
   Settings,
-  Mail,
   PanelLeftClose,
   PanelLeft,
   Briefcase,
@@ -22,8 +19,7 @@ import {
   Bell,
   CheckCircle2,
   LogOut,
-  KeyRound,
-  UserCheck,
+  Plug,
   Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,12 +38,14 @@ import { RoleBadge } from "@/components/shared/StatusBadge";
 import { useAuth } from "@/context/AuthContext";
 import { useUiStore } from "@/stores/useUiStore";
 import { useOrganization } from "@/features/organizations/api/queries";
+import { useAssetUrl } from "@/lib/assetUrl";
 import { can } from "@/types/permissions";
 import { cn } from "@/lib/utils";
 
 export function OrganizationAdminShell() {
   const { orgId = "" } = useParams();
   const { data: organization } = useOrganization(orgId);
+  const { url: logoUrl } = useAssetUrl(organization?.logoAssetId, "authenticated");
   const { user, userContext, logout } = useAuth();
   const { sidebarCollapsed, toggleSidebar, setWorkspace, activeOrganizationId, setActiveOrganizationId } = useUiStore();
   const navigate = useNavigate();
@@ -75,23 +73,23 @@ export function OrganizationAdminShell() {
     { to: `/org/${orgId}/challenges`, label: "Challenges", icon: Trophy, permission: "challenge.view" as const },
     { to: `/org/${orgId}/submissions`, label: "Submissions Pool", icon: Send, permission: "submission.view_all" as const },
     { to: `/org/${orgId}/judging`, label: "Judging & Rubrics", icon: Gavel, permission: "challenge.manage_judges" as const },
+    // Grouped surfaces: each entry links to the group's first section, and
+    // that page's own SectionTabsLayout offers the siblings as in-page tabs
+    // (see src/app/layouts/sections.tsx). The permission here is the one that
+    // makes the *group* reachable at all — individual tabs gate themselves.
     { to: `/org/${orgId}/members`, label: "Members & Access", icon: Users, permission: "organization.manage_members" as const },
-    { to: `/org/${orgId}/invitations`, label: "Invitations", icon: Mail, permission: "organization.manage_members" as const },
-    { to: `/org/${orgId}/join-codes`, label: "Join Codes", icon: KeyRound, permission: "organization.manage_join_codes" as const },
-    { to: `/org/${orgId}/join-requests`, label: "Join Requests", icon: UserCheck, permission: "organization.review_join_requests" as const },
     { to: `/org/${orgId}/portfolio`, label: "Innovation Portfolio", icon: Briefcase, permission: "innovation.view" as const },
     { to: `/org/${orgId}/forms`, label: "Custom Forms", icon: FileText, permission: "organization.manage_forms" as const },
-    { to: `/org/${orgId}/analytics`, label: "Analytics & Telemetry", icon: BarChart3, permission: "analytics.view_org" as const },
-    { to: `/org/${orgId}/exports`, label: "Data Exports & Archives", icon: Download, permission: "organization.manage_settings" as const },
-    { to: `/org/${orgId}/audit`, label: "Audit Logs", icon: History, permission: "organization.view_audit" as const },
-    { to: `/org/${orgId}/settings`, label: "Org Settings", icon: Settings, permission: "organization.manage_settings" as const },
+    { to: `/org/${orgId}/analytics`, label: "Analytics & Exports", icon: BarChart3, permission: "analytics.view_org" as const },
+    { to: `/org/${orgId}/integrations`, label: "Integrations", icon: Plug, permission: "organization.manage_integrations" as const },
+    { to: `/org/${orgId}/settings`, label: "Settings & Audit", icon: Settings, permission: "organization.manage_settings" as const },
   ];
 
   const visibleNavItems = adminNavItems.filter((item) => can(userContext, item.permission));
 
   return (
     <div className="h-screen overflow-hidden flex bg-background text-foreground">
-      {/* Sidebar 07 adapted for DevArena Organization Admin */}
+      {/* Sidebar 07 adapted for VUSurge Organization Admin */}
       <aside
         className={cn(
           "hidden md:flex flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-all duration-300 z-30 shrink-0",
@@ -99,12 +97,18 @@ export function OrganizationAdminShell() {
         )}
       >
         {/* Sidebar Header */}
-        <div className="h-16 border-b border-sidebar-border px-3 flex items-center justify-between gap-2">
-          {!sidebarCollapsed ? (
+        <div className={cn("h-16 border-b border-sidebar-border flex items-center", sidebarCollapsed ? "justify-center" : "px-3 justify-between gap-2")}>
+          {!sidebarCollapsed && (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shrink-0 shadow-xs">
-                <Sparkles className="h-4 w-4" />
-              </div>
+              {logoUrl ? (
+                <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 shadow-xs ring-1 ring-border/50">
+                  <img src={logoUrl} alt={orgName} className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shrink-0 shadow-xs">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+              )}
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-xs tracking-tight truncate text-sidebar-foreground">
                   {orgName}
@@ -113,10 +117,6 @@ export function OrganizationAdminShell() {
                   Admin Console
                 </span>
               </div>
-            </div>
-          ) : (
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground mx-auto">
-              <Sparkles className="h-4 w-4" />
             </div>
           )}
 
@@ -154,10 +154,11 @@ export function OrganizationAdminShell() {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                    "flex items-center gap-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer",
                     isActive
                       ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent",
+                    sidebarCollapsed ? "justify-center px-0" : "px-3"
                   )
                 }
                 title={sidebarCollapsed ? item.label : undefined}
@@ -179,6 +180,7 @@ export function OrganizationAdminShell() {
               navigate("/app");
             }}
             className={cn("w-full justify-center text-xs gap-2 text-muted-foreground hover:text-foreground", sidebarCollapsed && "px-0")}
+            title={sidebarCollapsed ? "Exit to Participant View" : undefined}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             {!sidebarCollapsed && <span>Exit to Participant View</span>}
@@ -204,9 +206,15 @@ export function OrganizationAdminShell() {
               <SheetContent side="left" className="w-72 p-0 flex flex-col bg-sidebar text-sidebar-foreground">
                 <SheetHeader className="text-left px-4 pt-4 pb-3 border-b border-sidebar-border">
                   <SheetTitle className="flex items-center gap-2 text-sidebar-foreground">
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shrink-0 shadow-xs">
-                      <Sparkles className="h-4 w-4" />
-                    </div>
+                    {logoUrl ? (
+                      <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 shadow-xs ring-1 ring-border/50">
+                        <img src={logoUrl} alt={orgName} className="h-full w-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shrink-0 shadow-xs">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                    )}
                     <div className="flex flex-col min-w-0">
                       <span className="font-bold text-xs tracking-tight truncate">{orgName}</span>
                       <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Admin Console</span>

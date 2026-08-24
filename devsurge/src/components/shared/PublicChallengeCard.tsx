@@ -17,7 +17,7 @@ export interface PublicChallengeCardProps {
 
 export function PublicChallengeCard({ challenge, layout = "grid", className }: PublicChallengeCardProps) {
   const isGrid = layout === "grid";
-  const orgName = challenge.organizationName || "DevArena Partner";
+  const orgName = challenge.organizationName || "VUSurge Partner";
   const detailHref = `/challenges/${challenge.organizationSlug}/${challenge.slug}`;
   const { url: coverUrl } = useAssetUrl(challenge.coverAssetId, "public");
   const deadline = challenge.submissionDeadline;

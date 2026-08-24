@@ -956,7 +956,10 @@ export function createJudgingService(
             organizationId,
             assignment.id,
           )
-          if (scorecard !== null && scorecard.status !== 'DRAFT') {
+          if (scorecard === null) {
+            throw conflict(ErrorCode.CONFLICT, 'This assignment has no scorecard to transfer.')
+          }
+          if (scorecard.status !== 'DRAFT') {
             throw conflict(
               ErrorCode.CONFLICT,
               'This assignment already has scores and cannot be reassigned.',
@@ -993,7 +996,7 @@ export function createJudgingService(
             organizationId,
             challengeId,
             judgeAssignmentId: newAssignment.id,
-            rubricVersionId: (scorecard ?? { rubricVersionId: '' }).rubricVersionId,
+            rubricVersionId: scorecard.rubricVersionId,
           })
 
           await audit.write(tx, {
@@ -1027,6 +1030,9 @@ export function createJudgingService(
           )
           if (assignment === null || assignment.challengeId !== challengeId) {
             throw notFound('Judge assignment not found.')
+          }
+          if (assignment.status !== 'ASSIGNED') {
+            throw conflict(ErrorCode.CONFLICT, 'Only an active assignment can be removed.')
           }
           const scorecard = await repository.findScorecardByAssignment(
             tx,

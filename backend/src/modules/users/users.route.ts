@@ -4,6 +4,7 @@ import { CommonErrorResponses, IdempotencyKey, PublicErrorResponses, Uuid } from
 import type { UsersController } from './users.controller'
 import {
   AccountDeletionRequestResponse,
+  AccountDeletionRequestStatusResponse,
   CreateAccountDeletionRequestBody,
   MeResponse,
   MyChallengeParticipationListResponse,
@@ -101,6 +102,17 @@ export function usersRoutes(controller: UsersController, auth: AuthPlugin) {
             'Returns the same 404 whether the user does not exist or the caller may not view the ' +
             'profile, so existence is never leaked to an unrelated caller.',
         },
+      },
+    )
+    .get(
+      '/me/account-deletion-request',
+      async ({ access }) => ({
+        request: await controller.getPendingAccountDeletion(access),
+      }),
+      {
+        requireAuth: true,
+        response: { 200: AccountDeletionRequestStatusResponse, ...CommonErrorResponses },
+        detail: { tags: ['Users'], summary: "Get the caller's pending account deletion request" },
       },
     )
     .post(

@@ -18,12 +18,7 @@ export function AuthLayout({ children, title, subtitle, className }: AuthLayoutP
         <div className="w-full max-w-md mx-auto space-y-6">
           <div className="space-y-2">
             <Link to="/" className="inline-flex items-center gap-2 mb-2 group">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-2xs group-hover:scale-105 transition-transform">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <span className="font-bold text-lg text-foreground tracking-tight">
-                DevArena
-              </span>
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8 group-hover:scale-105 transition-transform" />
             </Link>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
               {title}
@@ -78,7 +73,7 @@ export function AuthLayout({ children, title, subtitle, className }: AuthLayoutP
         {/* Bottom Testimonial / Credibility Box */}
         <div className="relative z-10 p-6 rounded-2xl border border-border/80 bg-card/80 backdrop-blur-md space-y-3 max-w-lg">
           <p className="text-xs text-foreground/90 italic leading-relaxed">
-            "DevArena solved the chaos of coordinating 800+ international researchers and 24 expert judges across 4 continents. The scoring audit trail is second to none."
+            "VUSurge solved the chaos of coordinating 800+ international researchers and 24 expert judges across 4 continents. The scoring audit trail is second to none."
           </p>
           <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
             <div>

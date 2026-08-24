@@ -7,6 +7,7 @@ import type { Page, PaginationLimits } from '../../shared/http'
 import { toPageRequest } from '../../shared/http'
 import type {
   AuditEventRow,
+  AuditEventWithActorRow,
   AuditRepository,
   AuditSummaryRow,
   PlatformAuditFilters,
@@ -28,7 +29,7 @@ export interface AuditService {
     access: AccessContext,
     organizationId: string,
     query: { limit?: number; cursor?: string },
-  ): Promise<Page<AuditEventRow>>
+  ): Promise<Page<AuditEventWithActorRow>>
   getForOrganization(
     access: AccessContext,
     organizationId: string,
@@ -38,7 +39,7 @@ export interface AuditService {
     access: AccessContext,
     filters: PlatformAuditFilters,
     query: { limit?: number; cursor?: string },
-  ): Promise<Page<AuditEventRow>>
+  ): Promise<Page<AuditEventWithActorRow>>
   getForPlatform(access: AccessContext, auditEventId: string): Promise<AuditEventRow>
   getSummaryForOrganization(access: AccessContext, organizationId: string): Promise<AuditSummaryRow>
 }

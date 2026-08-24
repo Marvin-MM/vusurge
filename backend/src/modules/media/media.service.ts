@@ -5,7 +5,11 @@ import type { AppConfig } from '../../shared/config/config.schema'
 import type { PrismaTransactionClient, TenantTransactionRunner } from '../../shared/database'
 import { badRequest, conflict, ErrorCode, forbidden, notFound } from '../../shared/errors'
 import { newId } from '../../shared/ids'
-import type { ImageDeliveryAuthorization, ImageDeliveryType, ImageProvider } from '../../shared/images'
+import type {
+  ImageDeliveryAuthorization,
+  ImageDeliveryType,
+  ImageProvider,
+} from '../../shared/images'
 import type { OutboxWriter } from '../../shared/outbox'
 import { QueueName } from '../../shared/queue'
 import { type RateLimiter, RateLimitPolicies } from '../../shared/rate-limit'

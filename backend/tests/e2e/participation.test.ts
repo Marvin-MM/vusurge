@@ -438,7 +438,10 @@ describe('participation registration', () => {
     )
     expect(membership).toBeNull()
 
-    const afterPublish = await app.request<{ formDefinitionId: string; fields: { key: string }[] } | null>(
+    const afterPublish = await app.request<{
+      formDefinitionId: string
+      fields: { key: string }[]
+    } | null>(
       'GET',
       `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/application-form`,
       { cookies: applicant.cookie },

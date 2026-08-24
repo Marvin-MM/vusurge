@@ -11,10 +11,10 @@ operator-controlled release gate succeeds in the target environment.
 |---|---:|
 | Numbered master-prompt sections classified | 60 |
 | Application modules | 31 |
-| Prisma migrations | 1 |
-| Test files | 52 |
-| OpenAPI paths | 268 |
-| OpenAPI operations | 317 |
+| Prisma migrations | 3 |
+| Test files | 55 |
+| OpenAPI paths | 275 |
+| OpenAPI operations | 325 |
 | Domain event types | 31 |
 | Registered queues | 9 |
 | Recurring job schedulers | 6 |

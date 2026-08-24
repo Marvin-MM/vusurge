@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Building2, FileCheck2, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import { Building2, FileCheck2, CheckCircle2, XCircle, ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { ConfirmActionDialog, ReasonDialog } from "@/components/feedback/Confirm
 import { PlatformAccessGuard } from "@/features/superadmin/components/PlatformAccessGuard";
 import {
   usePlatformOrganizations,
+  usePlatformOrganizationAuditSummary,
   useSuspendOrganization,
   useReinstateOrganization,
   useArchiveOrganization,
@@ -27,6 +28,55 @@ const ORG_STATUS_STYLE: Record<string, string> = {
   ARCHIVED: "bg-muted text-muted-foreground border-border",
 };
 
+/**
+ * Audit activity for one organization, loaded only when the row is expanded —
+ * this is the single aggregate the platform API exposes (cursor pages carry
+ * no totals), so it is the only way a superadmin can judge volume rather than
+ * page through raw rows.
+ */
+function OrgAuditSummary({ organizationId }: { organizationId: string }) {
+  const { data, isLoading } = usePlatformOrganizationAuditSummary(organizationId);
+
+  if (isLoading) {
+    return <div className="px-4 pb-4 text-[11px] text-muted-foreground">Loading activity...</div>;
+  }
+  if (!data) return null;
+
+  return (
+    <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
+      <div className="p-3 rounded-lg border border-border/60 bg-muted/20">
+        <div className="text-muted-foreground">Total audit events</div>
+        <div className="text-base font-bold font-mono text-foreground">{data.totalEvents}</div>
+      </div>
+      <div className="p-3 rounded-lg border border-border/60 bg-muted/20">
+        <div className="text-muted-foreground">First activity</div>
+        <div className="font-semibold text-foreground">
+          {data.firstEventAt ? new Date(data.firstEventAt).toLocaleDateString() : "—"}
+        </div>
+        <div className="text-muted-foreground mt-1">Last activity</div>
+        <div className="font-semibold text-foreground">
+          {data.lastEventAt ? new Date(data.lastEventAt).toLocaleDateString() : "—"}
+        </div>
+      </div>
+      <div className="p-3 rounded-lg border border-border/60 bg-muted/20">
+        <div className="text-muted-foreground mb-1">Most frequent actions</div>
+        {data.topActions.length === 0 ? (
+          <div className="text-muted-foreground">No recorded activity.</div>
+        ) : (
+          <div className="space-y-0.5">
+            {data.topActions.slice(0, 4).map((entry) => (
+              <div key={entry.action} className="flex items-center justify-between gap-2">
+                <span className="font-mono truncate text-foreground">{entry.action}</span>
+                <span className="font-mono text-muted-foreground shrink-0">{entry.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OrganizationsTab() {
   const { items: orgs, isLoading, hasMore, loadMore, isLoadingMore } = usePlatformOrganizations();
   const suspendMutation = useSuspendOrganization();
@@ -34,6 +84,7 @@ function OrganizationsTab() {
   const archiveMutation = useArchiveOrganization();
 
   const [reasonDialog, setReasonDialog] = React.useState<{ orgId: string; action: "suspend" | "archive" } | null>(null);
+  const [expandedOrgId, setExpandedOrgId] = React.useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -45,12 +96,22 @@ function OrganizationsTab() {
             <div className="p-8 text-center text-xs text-muted-foreground">No organizations found.</div>
           ) : (
             orgs.map((org) => (
-              <div key={org.id} className="p-4 flex items-center justify-between gap-4 text-xs">
+              <div key={org.id}>
+              <div className="p-4 flex items-center justify-between gap-4 text-xs">
                 <div>
                   <div className="font-bold text-foreground">{org.name}</div>
                   <div className="text-muted-foreground">/{org.slug} · {org.organizationType} · {org.visibility}</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 gap-1"
+                    onClick={() => setExpandedOrgId((prev) => (prev === org.id ? null : org.id))}
+                  >
+                    {expandedOrgId === org.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                    <span>Activity</span>
+                  </Button>
                   <Badge variant="outline" className={`text-[10px] ${ORG_STATUS_STYLE[org.status] || ""}`}>{org.status}</Badge>
                   {org.status === "ACTIVE" && (
                     <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => setReasonDialog({ orgId: org.id, action: "suspend" })}>
@@ -73,6 +134,8 @@ function OrganizationsTab() {
                     </>
                   )}
                 </div>
+              </div>
+              {expandedOrgId === org.id && <OrgAuditSummary organizationId={org.id} />}
               </div>
             ))
           )}

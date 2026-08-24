@@ -24,7 +24,7 @@ export function PublicSearchPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <PageHeader title="Search" description="Find challenges and organizations across DevArena." />
+      <PageHeader title="Search" description="Find challenges and organizations across VUSurge." />
 
       <form onSubmit={handleSubmit} className="max-w-xl">
         <div className="relative">

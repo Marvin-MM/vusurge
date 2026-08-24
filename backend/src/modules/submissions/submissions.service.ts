@@ -27,6 +27,13 @@ export interface SubmissionDetail {
   submission: SubmissionRow
   draftVersion: SubmissionVersionRow | null
   screenshots: SubmissionScreenshotRow[]
+  presentationFiles: SubmissionPresentationFile[]
+}
+
+export interface SubmissionPresentationFile {
+  fileAssetId: string
+  displayName: string
+  scanStatus: 'PENDING_UPLOAD' | 'QUARANTINED' | 'CLEAN' | 'INFECTED' | 'FAILED'
 }
 
 export interface SaveDraftInput extends SubmissionVersionInput {
@@ -152,7 +159,75 @@ export function createSubmissionsService(
       draftVersion === null
         ? []
         : await repository.listScreenshots(tx, organizationId, draftVersion.id)
-    return { submission, draftVersion, screenshots }
+    const presentationFiles =
+      draftVersion === null ? [] : await listPresentationFiles(tx, organizationId, draftVersion.id)
+    return { submission, draftVersion, screenshots, presentationFiles }
+  }
+
+  async function listPresentationFiles(
+    tx: Tx,
+    organizationId: string,
+    submissionVersionId: string,
+    cleanOnly = false,
+  ): Promise<SubmissionPresentationFile[]> {
+    const assets = await tx.submissionAsset.findMany({
+      where: {
+        organizationId,
+        submissionVersionId,
+        kind: 'PRESENTATION_FILE',
+        fileAsset: {
+          status: 'ACTIVE',
+          ...(cleanOnly ? { storedObject: { status: 'CLEAN' } } : {}),
+        },
+      },
+      select: {
+        fileAssetId: true,
+        displayName: true,
+        fileAsset: { select: { storedObject: { select: { status: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    return assets.flatMap((asset) => {
+      const fileAssetId = asset.fileAssetId
+      const fileAsset = asset.fileAsset
+      if (fileAssetId === null || fileAsset === null) return []
+      const scanStatus = fileAsset.storedObject.status
+      if (!['PENDING_UPLOAD', 'QUARANTINED', 'CLEAN', 'INFECTED', 'FAILED'].includes(scanStatus)) {
+        return []
+      }
+      return [
+        {
+          fileAssetId,
+          displayName: asset.displayName ?? 'Presentation file',
+          scanStatus: scanStatus as SubmissionPresentationFile['scanStatus'],
+        },
+      ]
+    })
+  }
+
+  async function copyPresentationFiles(
+    tx: Tx,
+    organizationId: string,
+    challengeId: string,
+    sourceVersionId: string,
+    targetVersionId: string,
+    cleanOnly = false,
+  ): Promise<void> {
+    const files = await listPresentationFiles(tx, organizationId, sourceVersionId, cleanOnly)
+    for (const file of files) {
+      await tx.submissionAsset.create({
+        data: {
+          id: newId(),
+          organizationId,
+          challengeId,
+          submissionVersionId: targetVersionId,
+          kind: 'PRESENTATION_FILE',
+          fileAssetId: file.fileAssetId,
+          displayName: file.displayName,
+        },
+      })
+    }
   }
 
   async function attachScreenshots(
@@ -408,6 +483,15 @@ export function createSubmissionsService(
             screenshotIds,
           )
 
+          // Private presentation files are bound to immutable submission
+          // versions. Saving a new draft must carry the current version's
+          // durable file relationships forward; otherwise the upload appears
+          // to vanish immediately after the next save and finalization cannot
+          // satisfy a presentation requirement.
+          if (current !== null) {
+            await copyPresentationFiles(tx, organizationId, challengeId, current.id, version.id)
+          }
+
           await repository.setPointers(tx, organizationId, submissionId, {
             draftVersionId: version.id,
           })
@@ -593,14 +677,7 @@ export function createSubmissionsService(
             `Between ${requirements.minScreenshots} and ${requirements.maxScreenshots} screenshots are required.`,
           )
         }
-        const presentationAssets = await tx.submissionAsset.findMany({
-          where: {
-            organizationId,
-            challengeId,
-            submissionVersionId: draft.id,
-            kind: 'PRESENTATION_FILE',
-          },
-        })
+        const presentationAssets = await listPresentationFiles(tx, organizationId, draft.id, true)
         if (
           requirements.requirePresentationAsset &&
           draft.presentationUrl === null &&
@@ -640,19 +717,14 @@ export function createSubmissionsService(
             mediaAssetId: screenshot.mediaAssetId,
           })
         }
-        for (const asset of presentationAssets) {
-          await tx.submissionAsset.create({
-            data: {
-              id: newId(),
-              organizationId,
-              challengeId,
-              submissionVersionId: finalVersion.id,
-              kind: 'PRESENTATION_FILE',
-              fileAssetId: asset.fileAssetId,
-              displayName: asset.displayName,
-            },
-          })
-        }
+        await copyPresentationFiles(
+          tx,
+          organizationId,
+          challengeId,
+          draft.id,
+          finalVersion.id,
+          true,
+        )
 
         await repository.setPointers(tx, organizationId, submissionId, {
           finalVersionId: finalVersion.id,

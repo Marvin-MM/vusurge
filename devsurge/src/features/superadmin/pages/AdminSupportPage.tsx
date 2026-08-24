@@ -32,7 +32,10 @@ const PRIORITY_STYLE: Record<string, string> = {
 
 function TicketDetail({ ticketId }: { ticketId: string }) {
   const navigate = useNavigate();
-  const { data: ticket, isLoading } = usePlatformSupportTicket(ticketId);
+  const { data: detail, isLoading } = usePlatformSupportTicket(ticketId);
+  const ticket = detail?.ticket;
+  const comments = detail?.comments ?? [];
+  const internalNotes = detail?.internalNotes ?? [];
   const changeStatusMutation = useChangeTicketStatus(ticketId);
   const setPriorityMutation = useSetTicketPriority(ticketId);
   const resolveMutation = useResolveTicket(ticketId);
@@ -84,8 +87,22 @@ function TicketDetail({ ticketId }: { ticketId: string }) {
       <Card className="p-5 border-border space-y-3">
         <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
           <Send className="h-3.5 w-3.5" />
-          Reply to User
+          Conversation
         </div>
+        {comments.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No replies yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {comments.map((c) => (
+              <div key={c.id} className="p-3 rounded-lg border border-border/60 bg-background text-xs space-y-1">
+                <div className="text-[11px] text-muted-foreground">
+                  {new Date(c.createdAt).toLocaleString()}
+                </div>
+                <p className="text-foreground whitespace-pre-wrap">{c.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
         <Textarea value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Write a user-visible reply..." className="text-xs min-h-20" />
         <Button
           size="sm"
@@ -100,8 +117,20 @@ function TicketDetail({ ticketId }: { ticketId: string }) {
       <Card className="p-5 border-border space-y-3 bg-muted/20">
         <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
           <Lock className="h-3.5 w-3.5" />
-          Internal Note (staff-only)
+          Internal Notes (staff-only)
         </div>
+        {internalNotes.length > 0 && (
+          <div className="space-y-2">
+            {internalNotes.map((n) => (
+              <div key={n.id} className="p-3 rounded-lg border border-border/60 bg-background text-xs space-y-1">
+                <div className="text-[11px] text-muted-foreground">
+                  {new Date(n.createdAt).toLocaleString()}
+                </div>
+                <p className="text-foreground whitespace-pre-wrap">{n.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
         <Textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} placeholder="Internal note, not visible to the user..." className="text-xs min-h-20" />
         <Button
           variant="outline"

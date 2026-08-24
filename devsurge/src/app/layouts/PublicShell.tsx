@@ -4,12 +4,26 @@ import { Sparkles, Menu, ArrowRight, ShieldCheck, Trophy, Building2, LayoutDashb
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { SearchDialog } from "@/components/shared/SearchDialog";
 import { useAuth } from "@/context/AuthContext";
 
 export function PublicShell() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+
+  // Ctrl/Cmd-K is the conventional shortcut for an in-place search palette.
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const navLinks = [
     { to: "/challenges", label: "Challenges", icon: Trophy },
@@ -29,19 +43,9 @@ export function PublicShell() {
       {/* Public Top Navigation */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:scale-105 transition-transform">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-lg tracking-tight text-foreground leading-none">
-                  DevArena
-                </span>
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-tight">
-                  Innovation Cloud
-                </span>
-              </div>
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-2 group cursor-pointer transition-opacity hover:opacity-90">
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8 group-hover:scale-105 transition-transform" />
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
@@ -63,8 +67,9 @@ export function PublicShell() {
             </nav>
           </div>
 
-          <div className="hidden sm:flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/search")} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Search">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Search">
               <Search className="h-4 w-4" />
             </Button>
             {isLoading ? (
@@ -116,8 +121,7 @@ export function PublicShell() {
               <SheetContent side="right" className="w-72 sm:w-80">
                 <SheetHeader className="text-left pb-4 border-b border-border">
                   <SheetTitle className="flex items-center gap-2 text-base">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    <span>DevArena</span>
+                    <img src="/surgeLogo.png" alt="VUSurge" className="h-6" />
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-2 py-4">
@@ -193,6 +197,7 @@ export function PublicShell() {
               </SheetContent>
             </Sheet>
           </div>
+          </div>
         </div>
       </header>
 
@@ -205,11 +210,8 @@ export function PublicShell() {
       <footer className="border-t border-border/80 bg-card py-12 text-sm text-muted-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <span className="font-bold text-foreground">DevArena</span>
+            <div className="flex items-center gap-2 mb-4">
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8" />
             </div>
             <p className="text-xs leading-relaxed max-w-xs">
               Multi-tenant challenge and hackathon platform: organizations run challenges, teams submit projects, and
@@ -229,7 +231,7 @@ export function PublicShell() {
           <div>
             <h4 className="font-semibold text-foreground text-xs uppercase tracking-wider mb-3">Governance & Trust</h4>
             <ul className="space-y-2 text-xs">
-              <li><Link to="/about" className="hover:text-foreground">About DevArena</Link></li>
+              <li><Link to="/about" className="hover:text-foreground">About VUSurge</Link></li>
               <li><Link to="/faq" className="hover:text-foreground">FAQ & Rules</Link></li>
               <li><Link to="/terms" className="hover:text-foreground">Terms of Service</Link></li>
               <li><Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link></li>
@@ -247,10 +249,11 @@ export function PublicShell() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
-          <p>© {new Date().getFullYear()} DevArena Innovation Platform. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} VUSurge Innovation Platform. All rights reserved.</p>
         </div>
       </footer>
 
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

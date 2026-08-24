@@ -75,7 +75,7 @@ export function OrganizationApplicationForm({ onSubmitted }: OrganizationApplica
         </div>
         <h2 className="text-xl font-bold text-foreground">Application Submitted</h2>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Thank you for applying to host <strong>{name}</strong> on DevArena. The platform team will review your
+          Thank you for applying to host <strong>{name}</strong> on VUSurge. The platform team will review your
           application and notify you of the decision.
         </p>
       </Card>
@@ -152,7 +152,7 @@ export function OrganizationApplicationForm({ onSubmitted }: OrganizationApplica
         <label className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card cursor-pointer">
           <input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} className="mt-0.5 rounded border-border text-primary focus:ring-primary h-4 w-4" />
           <div className="space-y-0.5 text-xs text-foreground">
-            <span className="font-bold">I agree to the DevArena Organization Host Agreement</span>
+            <span className="font-bold">I agree to the VUSurge Organization Host Agreement</span>
           </div>
         </label>
       </Card>

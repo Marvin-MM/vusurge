@@ -158,7 +158,7 @@ export function createFilesService(
     organizationId: string,
     challengeId: string | null,
     resourceId: string,
-    operation: 'manage' | 'download',
+    operation: 'upload' | 'delete' | 'download',
   ): Promise<void> {
     const actor = requireVerifiedActor(access).actor
 
@@ -173,12 +173,12 @@ export function createFilesService(
       )
       if (resource === null) throw notFound()
 
-      if (operation === 'manage') {
+      if (operation !== 'download') {
         const teamMayEdit =
           resource.isTeamMember && permission(access, Permission.SubmissionEditOwn)
         const organizerMayEdit = permission(access, Permission.ChallengeEdit)
         if (
-          !resource.isCurrentDraft ||
+          (operation === 'upload' && !resource.isCurrentDraft) ||
           resource.submissionStatus !== 'DRAFT' ||
           (!teamMayEdit && !organizerMayEdit)
         ) {
@@ -219,7 +219,7 @@ export function createFilesService(
       if (form === null || (challengeId !== null && form.challengeId !== challengeId)) {
         throw notFound()
       }
-      if (operation === 'manage') {
+      if (operation !== 'download') {
         // Attaching a file while filling out a response needs the same
         // access as submitting the response itself (any active member) —
         // see forms.service.ts's submitResponse.
@@ -249,7 +249,9 @@ export function createFilesService(
       innovation.ownerUserId === actor.userId ||
       permission(access, Permission.InnovationManage)
     if (
-      operation === 'manage' ? !manages : !manages && !permission(access, Permission.InnovationView)
+      operation !== 'download'
+        ? !manages
+        : !manages && !permission(access, Permission.InnovationView)
     ) {
       throw notFound()
     }
@@ -310,7 +312,7 @@ export function createFilesService(
             input.organizationId,
             input.challengeId ?? null,
             input.resourceId,
-            'manage',
+            'upload',
           )
           const reserved = await repository.reserveUpload(tx, {
             id: storedObjectId,
@@ -380,7 +382,7 @@ export function createFilesService(
           pending.organizationId,
           pending.challengeId,
           pending.resourceId,
-          'manage',
+          'upload',
         ),
       )
 
@@ -441,7 +443,7 @@ export function createFilesService(
             pending.organizationId,
             pending.challengeId,
             pending.resourceId,
-            'manage',
+            'upload',
           )
           const now = await transactions.databaseNow(tx)
           const confirmed = await repository.confirmPendingUpload(tx, {
@@ -548,7 +550,7 @@ export function createFilesService(
             current.organizationId,
             current.challengeId,
             current.resourceId,
-            'manage',
+            'delete',
           )
           const pending = await repository.requestDeletion(tx, scope.organizationId, fileId)
           if (pending === null) return

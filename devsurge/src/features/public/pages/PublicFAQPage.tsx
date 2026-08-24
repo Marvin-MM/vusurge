@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 // database record.
 const FAQS: FAQItem[] = [
   {
-    question: "How does DevArena work?",
+    question: "How does VUSurge work?",
     answer:
       "Organizations create accounts and run challenges — hackathons, bounties, or open innovation calls. Anyone can browse public challenges without an account; to participate, you sign up, join or register for a challenge, optionally form a team, and submit your project before the deadline. Judges assigned by the organizer score submissions against a rubric, and results are published once judging is finalized.",
     category: "General",
@@ -69,7 +69,7 @@ export function PublicFAQPage() {
           Frequently Asked Questions
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          How challenges, teams, submissions, and judging work on DevArena. Looking for rules on a specific
+          How challenges, teams, submissions, and judging work on VUSurge. Looking for rules on a specific
           challenge? Check its own FAQ tab.
         </p>
       </div>

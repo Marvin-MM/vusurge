@@ -12,7 +12,7 @@ export function useCursorList<T>(
   queryKey: readonly unknown[],
   url: string,
   params?: Record<string, string | number | undefined>,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; staleTime?: number }
 ) {
   const query = useInfiniteQuery({
     queryKey: [...queryKey, params],
@@ -21,6 +21,9 @@ export function useCursorList<T>(
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor ?? undefined : undefined),
     enabled: options?.enabled,
+    // Lets callers widen the window for genuinely static reference data
+    // (catalogues) without weakening the app-wide default for live data.
+    staleTime: options?.staleTime,
   });
 
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];

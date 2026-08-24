@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
+import { EmptyState } from "@/components/feedback/EmptyState";
+import { useMyParticipation } from "@/features/participant/api/queries";
 import {
   useMySubmission,
   useSubmission,
@@ -16,7 +18,7 @@ import {
 } from "@/features/submissions/api/queries";
 import { useAssetUrl } from "@/lib/assetUrl";
 import { useUploadImage } from "@/lib/imageUpload";
-import { useUploadPrivateFile, useRequestPrivateFileDownload, readStoredFileRef, writeStoredFileRef } from "@/lib/fileUpload";
+import { useUploadPrivateFile, useRequestPrivateFileDownload, useDeletePrivateFile } from "@/lib/fileUpload";
 import { TechnologyTagPicker } from "@/components/shared/TechnologyTagPicker";
 import { toast } from "sonner";
 
@@ -44,12 +46,13 @@ export function SubmissionEditorPage() {
   const [searchParams] = useSearchParams();
   const organizationId = searchParams.get("organizationId") || "";
   const challengeId = searchParams.get("challengeId") || "";
-  const teamId = searchParams.get("teamId") || undefined;
 
   const isEditMode = Boolean(submissionId);
-  const { data: existingById } = useSubmission(organizationId, challengeId, submissionId || "");
-  const { data: mySubmission } = useMySubmission(organizationId, challengeId);
+  const { data: existingById, refetch: refetchExisting } = useSubmission(organizationId, challengeId, submissionId || "");
+  const { data: mySubmission, refetch: refetchMine } = useMySubmission(organizationId, challengeId);
   const submission = isEditMode ? existingById : mySubmission;
+
+  const { data: participation } = useMyParticipation(organizationId, challengeId);
 
   const createMutation = useCreateSubmission(organizationId, challengeId);
   const updateDraftMutation = useUpdateSubmissionDraft(organizationId, challengeId);
@@ -74,13 +77,16 @@ export function SubmissionEditorPage() {
   const uploadImageMutation = useUploadImage();
   const uploadPresentationMutation = useUploadPrivateFile();
   const requestDownloadMutation = useRequestPrivateFileDownload();
+  const deletePresentationMutation = useDeletePrivateFile();
   const screenshotInputRef = React.useRef<HTMLInputElement>(null);
   const presentationInputRef = React.useRef<HTMLInputElement>(null);
-  const [presentationFileRef, setPresentationFileRef] = React.useState<{ fileId: string; displayName: string } | null>(null);
+  const [presentationFiles, setPresentationFiles] = React.useState<
+    { fileAssetId: string; displayName: string; scanStatus: "PENDING_UPLOAD" | "QUARANTINED" | "CLEAN" | "INFECTED" | "FAILED" }[]
+  >([]);
 
   React.useEffect(() => {
-    if (submission?.id) setPresentationFileRef(readStoredFileRef(`submission:${submission.id}:presentation`));
-  }, [submission?.id]);
+    if (submission) setPresentationFiles(submission.presentationFiles ?? []);
+  }, [submission]);
 
   React.useEffect(() => {
     if (submission?.draftVersion && !hydrated) {
@@ -102,7 +108,9 @@ export function SubmissionEditorPage() {
   }, [submission, hydrated]);
 
   React.useEffect(() => {
-    if (submission?.screenshots) setScreenshotAssetIds(submission.screenshots);
+    if (submission?.screenshots) {
+      setScreenshotAssetIds(submission.screenshots.map((screenshot) => screenshot.mediaAssetId));
+    }
   }, [submission?.screenshots]);
 
   const buildDraftPayload = () => ({
@@ -126,7 +134,7 @@ export function SubmissionEditorPage() {
 
   const ensureSubmissionExists = async (): Promise<string> => {
     if (submission) return submission.id;
-    const created = await createMutation.mutateAsync({ teamId });
+    const created = await createMutation.mutateAsync();
     return created.id;
   };
 
@@ -137,7 +145,7 @@ export function SubmissionEditorPage() {
   // `createMutation` a second time (which would create a duplicate submission).
   const ensureSubmissionAndDraftVersion = async (): Promise<{ submissionId: string; draftVersionId: string }> => {
     if (submission?.draftVersion) return { submissionId: submission.id, draftVersionId: submission.draftVersion.id };
-    const created = await createMutation.mutateAsync({ teamId });
+    const created = await createMutation.mutateAsync();
     if (!created.draftVersion) throw new Error("Submission was created without a draft version.");
     return { submissionId: created.id, draftVersionId: created.draftVersion.id };
   };
@@ -169,25 +177,35 @@ export function SubmissionEditorPage() {
     e.target.value = "";
     if (!file) return;
     try {
-      const { submissionId, draftVersionId } = await ensureSubmissionAndDraftVersion();
+      const { draftVersionId } = await ensureSubmissionAndDraftVersion();
       const asset = await uploadPresentationMutation.mutateAsync({ purpose: "SUBMISSION_PRESENTATION", organizationId, challengeId, resourceId: draftVersionId, file });
-      const ref = { fileId: asset.id, displayName: file.name };
-      writeStoredFileRef(`submission:${submissionId}:presentation`, ref);
-      setPresentationFileRef(ref);
+      setPresentationFiles([
+        { fileAssetId: asset.id, displayName: asset.displayName, scanStatus: asset.scanStatus },
+      ]);
+      void (isEditMode ? refetchExisting() : refetchMine());
       toast.success("Presentation file uploaded — it will be scanned before it's downloadable.");
     } catch (err: any) {
       toast.error(err?.message || "Failed to upload presentation file.");
     }
   };
 
-  const handleDownloadPresentation = () => {
-    if (!presentationFileRef) return;
-    requestDownloadMutation.mutate(presentationFileRef.fileId, {
+  const handleDownloadPresentation = (fileId: string) => {
+    requestDownloadMutation.mutate(fileId, {
       onSuccess: (res) => window.open(res.downloadUrl, "_blank"),
       onError: (err: any) => {
         if (err?.code === "FILE_SCAN_PENDING") toast.error("Still being scanned — try again in a moment.");
         else toast.error(err?.message || "Failed to get download link.");
       },
+    });
+  };
+
+  const handleDeletePresentation = (fileId: string) => {
+    deletePresentationMutation.mutate(fileId, {
+      onSuccess: () => {
+        setPresentationFiles((current) => current.filter((file) => file.fileAssetId !== fileId));
+        toast.success("Presentation file removed.");
+      },
+      onError: (err: any) => toast.error(err?.message || "Failed to remove presentation file."),
     });
   };
 
@@ -225,6 +243,34 @@ export function SubmissionEditorPage() {
   };
 
   const isSaving = createMutation.isPending || updateDraftMutation.isPending;
+
+  // Submitting requires an APPROVED participation record — the backend gates
+  // this too (teams.service.ts's ensureTeamForSubmission), but reaching the
+  // form only to have every save fail with a 403 is a poor experience, and a
+  // direct link is easy to land on. Only applies when starting a new
+  // submission; an existing one is already ownership-checked server-side.
+  if (!isEditMode && participation && participation.status !== "APPROVED") {
+    return (
+      <PageContainer className="space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/app/submissions")} className="text-xs h-8 gap-1.5">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back to Submissions</span>
+          </Button>
+          <EmptyState
+            icon={Lock}
+            title="You're not registered for this challenge"
+            description={
+              participation.status === "PENDING"
+                ? "Your application is still under review. You can start a submission once an organizer approves it."
+                : "You need to be an approved participant before you can start a submission."
+            }
+            action={{ label: "Browse Challenges", onClick: () => navigate("/app/challenges") }}
+          />
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer className="space-y-6">
@@ -352,18 +398,20 @@ export function SubmissionEditorPage() {
             <div className="pt-3 border-t border-border/60 space-y-1.5">
               <label className="text-xs font-semibold text-foreground">Presentation Deck (PDF or document)</label>
               <input ref={presentationInputRef} type="file" accept=".pdf,.ppt,.pptx,.key,.doc,.docx" className="hidden" onChange={handlePresentationFileSelected} />
-              {presentationFileRef ? (
-                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/20 text-xs">
+              {presentationFiles.map((file) => (
+                <div key={file.fileAssetId} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-muted/20 text-xs">
                   <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-foreground truncate flex-1">{presentationFileRef.displayName}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={handleDownloadPresentation} disabled={requestDownloadMutation.isPending} className="text-xs h-7 shrink-0">
+                  <span className="text-foreground truncate flex-1">{file.displayName}</span>
+                  <span className="text-[10px] uppercase text-muted-foreground">{file.scanStatus.replace(/_/g, " ")}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => handleDownloadPresentation(file.fileAssetId)} disabled={requestDownloadMutation.isPending || file.scanStatus !== "CLEAN"} className="text-xs h-7 shrink-0">
                     Download
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => presentationInputRef.current?.click()} className="text-xs h-7 shrink-0">
-                    Replace
+                  <Button type="button" variant="ghost" size="icon" onClick={() => handleDeletePresentation(file.fileAssetId)} disabled={deletePresentationMutation.isPending} className="h-7 w-7 text-destructive shrink-0" aria-label={`Remove ${file.displayName}`}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              ) : (
+              ))}
+              {presentationFiles.length === 0 && (
                 <Button type="button" variant="outline" size="sm" onClick={() => presentationInputRef.current?.click()} disabled={uploadPresentationMutation.isPending} className="text-xs h-8 gap-1.5">
                   <Upload className="h-3.5 w-3.5" />
                   {uploadPresentationMutation.isPending ? "Uploading..." : "Upload Presentation File"}

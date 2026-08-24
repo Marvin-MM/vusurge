@@ -67,4 +67,14 @@ export const FormResponseResponse = t.Object({
   submittedAt: t.String(),
 })
 
-export const FormResponseListResponse = PageOf(FormResponseResponse)
+/** The reviewer-facing listing resolves the respondent's identity server-side
+ *  — see FormResponseWithRespondentRow. */
+export const FormResponseWithRespondentResponse = t.Composite([
+  FormResponseResponse,
+  t.Object({
+    displayName: t.Union([t.String(), t.Null()]),
+    email: t.String(),
+  }),
+])
+
+export const FormResponseListResponse = PageOf(FormResponseWithRespondentResponse)

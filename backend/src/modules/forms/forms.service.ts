@@ -11,6 +11,7 @@ import type {
   FormDefinitionRow,
   FormPurpose,
   FormResponseRow,
+  FormResponseWithRespondentRow,
   FormsRepository,
   FormVersionRow,
 } from './forms.repository'
@@ -253,7 +254,7 @@ export interface FormsService {
     organizationId: string,
     formDefinitionId: string,
     query: { limit?: number; cursor?: string },
-  ): Promise<Page<FormResponseRow>>
+  ): Promise<Page<FormResponseWithRespondentRow>>
 }
 
 export function createFormsService(

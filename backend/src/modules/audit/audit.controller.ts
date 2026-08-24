@@ -1,14 +1,22 @@
 import type { AccessContext } from '../../shared/authorization'
 import type { Page } from '../../shared/http'
-import type { AuditEventRow, PlatformAuditFilters } from './audit.repository'
+import type {
+  AuditEventRow,
+  AuditEventWithActorRow,
+  PlatformAuditFilters,
+} from './audit.repository'
 import type { AuditService } from './audit.service'
 
 function serialize(row: AuditEventRow) {
   return { ...row, createdAt: row.createdAt.toISOString() }
 }
 
-function serializePage(page: Page<AuditEventRow>) {
-  return { items: page.items.map(serialize), hasMore: page.hasMore, nextCursor: page.nextCursor }
+function serializePage(page: Page<AuditEventWithActorRow>) {
+  return {
+    items: page.items.map((row) => ({ ...serialize(row), actorDisplayName: row.actorDisplayName })),
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+  }
 }
 
 export function createAuditController(service: AuditService) {

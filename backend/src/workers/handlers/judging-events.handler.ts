@@ -23,7 +23,8 @@ interface ScorecardSubmittedPayload {
 export const handleChallengeStaffInvitationCreated: JobHandler = async (context) => {
   const payload = context.payload as unknown as StaffInvitationCreatedPayload
 
-  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}/challenge-staff-invitations/${payload.token}/accept`
+  const invitationPath = `/challenge-staff-invitations/${payload.token}/accept`
+  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}${invitationPath}`
   const { subject, text } = EmailTemplates.challengeStaffInviteEmail({
     challengeTitle: payload.challengeTitle,
     role: payload.role,
@@ -53,6 +54,7 @@ export const handleChallengeStaffInvitationCreated: JobHandler = async (context)
       category: 'JUDGING_ASSIGNMENT',
       title: subject,
       body: `You've been invited to serve as ${payload.role.toLowerCase()} for "${payload.challengeTitle}".`,
+      linkUrl: invitationPath,
     })
   }
 }
@@ -66,7 +68,7 @@ export const handleJudgeAssignmentCreated: JobHandler = async (context) => {
   if (user === null) return
 
   const { subject, text } = EmailTemplates.judgingAssignmentEmail({
-    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/judging/assignments`,
+    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/judge`,
   })
 
   await enqueueJobEmail(context, {
@@ -86,6 +88,7 @@ export const handleJudgeAssignmentCreated: JobHandler = async (context) => {
     category: 'JUDGING_ASSIGNMENT',
     title: subject,
     body: text.split('\n')[0] ?? subject,
+    linkUrl: '/judge',
   })
 }
 

@@ -110,7 +110,11 @@ export type ChallengeStaffRole = 'JUDGE' | 'MENTOR'
 export const CHALLENGE_STAFF_ROLE_PERMISSIONS: Readonly<
   Record<ChallengeStaffRole, readonly Permission[]>
 > = {
-  JUDGE: [Permission.ChallengeView, Permission.JudgingViewAssigned, Permission.JudgingScoreAssigned],
+  JUDGE: [
+    Permission.ChallengeView,
+    Permission.JudgingViewAssigned,
+    Permission.JudgingScoreAssigned,
+  ],
   MENTOR: [Permission.ChallengeView, Permission.MentoringViewAssigned],
 }
 

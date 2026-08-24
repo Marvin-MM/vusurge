@@ -5,6 +5,7 @@ import type { TenantTransactionRunner } from '../../shared/database'
 import { featureDisabled, rateLimited } from '../../shared/errors'
 import { type Page, type PaginationLimits, toPageRequest } from '../../shared/http'
 import { newId } from '../../shared/ids'
+import { describeError, type Logger } from '../../shared/logging'
 import type {
   NotificationCategory,
   NotificationPreferenceRow,
@@ -64,6 +65,7 @@ export function createNotificationsService(
   transactions: TenantTransactionRunner,
   config: AppConfig,
   paginationLimits: PaginationLimits,
+  logger: Logger,
 ): NotificationsService {
   const userConnections = new Map<string, number>()
   const ipConnections = new Map<string, number>()
@@ -159,6 +161,7 @@ export function createNotificationsService(
       const close = () => {
         if (closed) return
         closed = true
+        signal.removeEventListener('abort', close)
         release()
         try {
           streamController?.close()
@@ -219,7 +222,22 @@ export function createNotificationsService(
               }
             }
             close()
-          })().catch(() => close())
+          })().catch((error: unknown) => {
+            if (!signal.aborted) {
+              logger.warn(
+                { err: describeError(error), userId: actor.userId },
+                'Notification SSE stream stopped unexpectedly; client will use polling fallback',
+              )
+              try {
+                send(
+                  `event: unavailable\ndata: ${JSON.stringify({ pollingFallback: '/api/v1/me/notifications' })}\n\n`,
+                )
+              } catch {
+                // The peer may already have disconnected.
+              }
+            }
+            close()
+          })
         },
         cancel() {
           close()

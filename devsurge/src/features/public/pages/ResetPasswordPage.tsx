@@ -52,7 +52,7 @@ export function ResetPasswordPage() {
   return (
     <AuthLayout
       title="Create new password"
-      subtitle="Choose a strong, secure password for your DevArena account."
+      subtitle="Choose a strong, secure password for your VUSurge account."
     >
       {success ? (
         <div className="p-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 text-center space-y-2">

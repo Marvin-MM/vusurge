@@ -1,4 +1,4 @@
-// DevArena Core Domain Types & Enums
+// VUSurge Core Domain Types & Enums
 //
 // These enums mirror the real backend's Prisma schema / permission catalogue
 // exactly (see backend/docs/permissions-matrix.md, challenge-states.md,
@@ -360,6 +360,9 @@ export interface FormVersion {
 }
 
 export interface FormResponseEntry {
+  /** Resolved server-side; `/users/:id/profile` 404s for non-org-members. */
+  displayName?: string | null;
+  email?: string;
   id: string;
   formVersionId: string;
   userId: string;
@@ -411,6 +414,7 @@ export interface Challenge {
   judgingStartAt: string | null;
   judgingEndAt: string | null;
   resultsPublishedAt: string | null;
+  feedbackReleasedAt: string | null;
   maxTeamSize: number;
   minTeamSize: number;
   soloParticipationAllowed: boolean;
@@ -530,7 +534,12 @@ export interface Submission {
   status: SubmissionStatus;
   /** The current editable/finalized content — null only in the always-null theoretical case before any version exists (in practice every submission is created with one). */
   draftVersion: SubmissionVersion | null;
-  screenshots: string[];
+  screenshots: { slot: number; mediaAssetId: string }[];
+  presentationFiles: {
+    fileAssetId: string;
+    displayName: string;
+    scanStatus: "PENDING_UPLOAD" | "QUARANTINED" | "CLEAN" | "INFECTED" | "FAILED";
+  }[];
   disqualificationReason: string | null;
   createdAt: string;
 }
@@ -592,6 +601,8 @@ export interface JudgeAssignment {
   staffAssignmentId: string;
   submissionId: string;
   status: "ASSIGNED" | "CONFLICT_DECLARED" | "RECUSED" | "REASSIGNED";
+  scorecardId: string | null;
+  scorecardStatus: ScorecardStatus | null;
   createdAt: string;
 }
 
@@ -1041,6 +1052,8 @@ export interface AuditEvent {
   organizationId: string | null;
   actorType: string;
   actorUserId: string | null;
+  /** Resolved server-side; `/users/:id/profile` 404s for non-org-members. */
+  actorDisplayName?: string | null;
   action: string;
   resourceType: string;
   resourceId: string;

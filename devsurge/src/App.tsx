@@ -4,6 +4,7 @@ import { FileCheck2, Gavel, UserCheck, Users, Megaphone } from "lucide-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/context/AuthContext";
 import { RequireAuth } from "@/components/guards/RequireAuth";
+import { PublicOnlyRoute } from "@/components/guards/PublicOnlyRoute";
 import { OrgAdminEntryRedirect } from "@/components/guards/OrgAdminEntryRedirect";
 import { ErrorBoundary, NotFoundPage, ForbiddenPage, UnauthorizedPage, OrganizationSuspendedPage, InvitationExpiredPage } from "@/components/feedback/ErrorPages";
 
@@ -14,93 +15,136 @@ import { OrganizationAdminShell } from "@/app/layouts/OrganizationAdminShell";
 import { JudgeShell } from "@/app/layouts/JudgeShell";
 import { PlatformAdminShell } from "@/app/layouts/PlatformAdminShell";
 
-// Public Pages
-import { PublicLandingPage } from "@/features/public/pages/PublicLandingPage";
-import { PublicChallengesPage } from "@/features/public/pages/PublicChallengesPage";
-import { PublicChallengeDetailPage } from "@/features/public/pages/PublicChallengeDetailPage";
-import { PublicOrganizationsPage } from "@/features/public/pages/PublicOrganizationsPage";
-import { PublicSearchPage } from "@/features/public/pages/PublicSearchPage";
-import { PublicOrgDetailPage } from "@/features/public/pages/PublicOrgDetailPage";
-import { PublicResultsPage } from "@/features/public/pages/PublicResultsPage";
-import { PublicAboutPage } from "@/features/public/pages/PublicAboutPage";
-import { PublicHowItWorksPage } from "@/features/public/pages/PublicHowItWorksPage";
-import { PublicFAQPage } from "@/features/public/pages/PublicFAQPage";
-import { PublicPrivacyPage } from "@/features/public/pages/PublicPrivacyPage";
-import { PublicTermsPage } from "@/features/public/pages/PublicTermsPage";
-import { PublicAcceptableUsePage } from "@/features/public/pages/PublicAcceptableUsePage";
-
-// Auth & Onboarding Pages
-import { SignInPage } from "@/features/public/pages/SignInPage";
-import { SignUpPage } from "@/features/public/pages/SignUpPage";
-import { VerifyEmailPage } from "@/features/public/pages/VerifyEmailPage";
-import { TwoFactorVerifyPage } from "@/features/public/pages/TwoFactorVerifyPage";
-import { ForgotPasswordPage } from "@/features/public/pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "@/features/public/pages/ResetPasswordPage";
-import { InvitationLandingPage } from "@/features/public/pages/InvitationLandingPage";
-import { JoinCodeRedemptionPage } from "@/features/public/pages/JoinCodeRedemptionPage";
-
-// Participant Pages
-import { ParticipantDashboard } from "@/features/participant/pages/ParticipantDashboard";
-import { ChallengesExplorePage } from "@/features/challenges/pages/ChallengesExplorePage";
-import { ChallengeDetailPage } from "@/features/challenges/pages/ChallengeDetailPage";
-import { MyChallengesPage } from "@/features/challenges/pages/MyChallengesPage";
-import { TeamsMatchmakingPage } from "@/features/teams/pages/TeamsMatchmakingPage";
-import { TeamDetailPage } from "@/features/teams/pages/TeamDetailPage";
-import { SubmissionsListPage } from "@/features/submissions/pages/SubmissionsListPage";
-import { SubmissionEditorPage } from "@/features/submissions/pages/SubmissionEditorPage";
-import { SubmissionDetailPage } from "@/features/submissions/pages/SubmissionDetailPage";
-import { OrganizationsExplorePage } from "@/features/organizations/pages/OrganizationsExplorePage";
-import { InboxPage } from "@/features/notifications/pages/InboxPage";
-import { SupportTicketsPage } from "@/features/participant/pages/SupportTicketsPage";
-import { SupportTicketDetailPage } from "@/features/participant/pages/SupportTicketDetailPage";
-import { ApplyOrganizationPage } from "@/features/participant/pages/ApplyOrganizationPage";
-import { UserProfilePage } from "@/features/participant/pages/UserProfilePage";
-import { UserSettingsPage } from "@/features/participant/pages/UserSettingsPage";
-
-// Org Admin Pages
-import { OrgDashboard } from "@/features/org-admin/pages/OrgDashboard";
-import { OrgChallengesPage } from "@/features/org-admin/pages/OrgChallengesPage";
+import { RoleInvitationLandingPage } from "@/features/public/pages/RoleInvitationLandingPage";
+import {
+  OrgAccessSectionLayout,
+  OrgInsightsSectionLayout,
+  OrgGovernanceSectionLayout,
+  OrgEvaluationSectionLayout,
+  ParticipantMessagesSectionLayout,
+  ParticipantAccountSectionLayout,
+} from "@/app/layouts/sections";
 import { OrgChallengeScopePickerPage } from "@/features/org-admin/pages/OrgChallengeScopePickerPage";
-import { OrgChallengeEditorPage } from "@/features/org-admin/pages/OrgChallengeEditorPage";
-import { OrgSubmissionsPoolPage } from "@/features/org-admin/pages/OrgSubmissionsPoolPage";
-import { OrgJudgingManagementPage } from "@/features/org-admin/pages/OrgJudgingManagementPage";
-import { OrgResultsManagementPage } from "@/features/org-admin/pages/OrgResultsManagementPage";
-import { OrgParticipantsPage } from "@/features/org-admin/pages/OrgParticipantsPage";
-import { OrgTeamsOversightPage } from "@/features/org-admin/pages/OrgTeamsOversightPage";
-import { OrgAnnouncementsPage } from "@/features/org-admin/pages/OrgAnnouncementsPage";
-import { OrgMembersPage } from "@/features/org-admin/pages/OrgMembersPage";
-import { OrgInvitationsPage } from "@/features/org-admin/pages/OrgInvitationsPage";
-import { OrgJoinCodesPage } from "@/features/org-admin/pages/OrgJoinCodesPage";
-import { OrgJoinRequestsPage } from "@/features/org-admin/pages/OrgJoinRequestsPage";
-import { OrgPortfolioPage } from "@/features/org-admin/pages/OrgPortfolioPage";
-import { OrgPortfolioDetailPage } from "@/features/org-admin/pages/OrgPortfolioDetailPage";
-import { OrgFormsPage } from "@/features/org-admin/pages/OrgFormsPage";
-import { OrgFormDetailPage } from "@/features/org-admin/pages/OrgFormDetailPage";
-import { OrgExportsPage } from "@/features/org-admin/pages/OrgExportsPage";
-import { OrgIntegrationsPage } from "@/features/org-admin/pages/OrgIntegrationsPage";
-import { OrgAnalyticsPage } from "@/features/org-admin/pages/OrgAnalyticsPage";
-import { OrgAuditPage } from "@/features/org-admin/pages/OrgAuditPage";
-import { OrgSettingsPage } from "@/features/org-admin/pages/OrgSettingsPage";
 
-// Judge Pages
-import { JudgeDashboard } from "@/features/judging/pages/JudgeDashboard";
-import { JudgeEvaluationPage } from "@/features/judging/pages/JudgeEvaluationPage";
+// Portal workspaces are route-loaded. Most users enter only one of these
+// portals, so shipping every organizer, judge, and platform-admin screen in
+// the public/participant entry bundle wastes bandwidth and parse time.
+const lazyNamed = (loader: () => Promise<Record<string, unknown>>, exportName: string) =>
+  React.lazy(async () => {
+    const component = (await loader())[exportName];
+    if (typeof component !== "function") {
+      throw new Error(`Lazy route export "${exportName}" is not a React component.`);
+    }
+    return { default: component as React.ComponentType };
+  });
 
-// Superadmin Pages
-import { AdminDashboard } from "@/features/superadmin/pages/AdminDashboard";
-import { AdminOrganizationsPage } from "@/features/superadmin/pages/AdminOrganizationsPage";
-import { AdminChallengesPage } from "@/features/superadmin/pages/AdminChallengesPage";
-import { AdminModerationPage } from "@/features/superadmin/pages/AdminModerationPage";
-import { AdminSupportPage } from "@/features/superadmin/pages/AdminSupportPage";
-import { AdminHealthPage } from "@/features/superadmin/pages/AdminHealthPage";
-import { AdminAuditLogsPage } from "@/features/superadmin/pages/AdminAuditLogsPage";
+const PublicLandingPage = lazyNamed(() => import("@/features/public/pages/PublicLandingPage"), "PublicLandingPage");
+const PublicChallengesPage = lazyNamed(() => import("@/features/public/pages/PublicChallengesPage"), "PublicChallengesPage");
+const PublicChallengeDetailPage = lazyNamed(() => import("@/features/public/pages/PublicChallengeDetailPage"), "PublicChallengeDetailPage");
+const PublicOrganizationsPage = lazyNamed(() => import("@/features/public/pages/PublicOrganizationsPage"), "PublicOrganizationsPage");
+const PublicSearchPage = lazyNamed(() => import("@/features/public/pages/PublicSearchPage"), "PublicSearchPage");
+const PublicOrgDetailPage = lazyNamed(() => import("@/features/public/pages/PublicOrgDetailPage"), "PublicOrgDetailPage");
+const PublicResultsPage = lazyNamed(() => import("@/features/public/pages/PublicResultsPage"), "PublicResultsPage");
+const PublicAboutPage = lazyNamed(() => import("@/features/public/pages/PublicAboutPage"), "PublicAboutPage");
+const PublicHowItWorksPage = lazyNamed(() => import("@/features/public/pages/PublicHowItWorksPage"), "PublicHowItWorksPage");
+const PublicFAQPage = lazyNamed(() => import("@/features/public/pages/PublicFAQPage"), "PublicFAQPage");
+const PublicPrivacyPage = lazyNamed(() => import("@/features/public/pages/PublicPrivacyPage"), "PublicPrivacyPage");
+const PublicTermsPage = lazyNamed(() => import("@/features/public/pages/PublicTermsPage"), "PublicTermsPage");
+const PublicAcceptableUsePage = lazyNamed(() => import("@/features/public/pages/PublicAcceptableUsePage"), "PublicAcceptableUsePage");
+const SignInPage = lazyNamed(() => import("@/features/public/pages/SignInPage"), "SignInPage");
+const SignUpPage = lazyNamed(() => import("@/features/public/pages/SignUpPage"), "SignUpPage");
+const VerifyEmailPage = lazyNamed(() => import("@/features/public/pages/VerifyEmailPage"), "VerifyEmailPage");
+const TwoFactorVerifyPage = lazyNamed(() => import("@/features/public/pages/TwoFactorVerifyPage"), "TwoFactorVerifyPage");
+const ForgotPasswordPage = lazyNamed(() => import("@/features/public/pages/ForgotPasswordPage"), "ForgotPasswordPage");
+const ResetPasswordPage = lazyNamed(() => import("@/features/public/pages/ResetPasswordPage"), "ResetPasswordPage");
+const InvitationLandingPage = lazyNamed(() => import("@/features/public/pages/InvitationLandingPage"), "InvitationLandingPage");
+const JoinCodeRedemptionPage = lazyNamed(() => import("@/features/public/pages/JoinCodeRedemptionPage"), "JoinCodeRedemptionPage");
+
+const ParticipantDashboard = lazyNamed(() => import("@/features/participant/pages/ParticipantDashboard"), "ParticipantDashboard");
+const ChallengesExplorePage = lazyNamed(() => import("@/features/challenges/pages/ChallengesExplorePage"), "ChallengesExplorePage");
+const ChallengeDetailPage = lazyNamed(() => import("@/features/challenges/pages/ChallengeDetailPage"), "ChallengeDetailPage");
+const MyChallengesPage = lazyNamed(() => import("@/features/challenges/pages/MyChallengesPage"), "MyChallengesPage");
+const ParticipantResultsPage = lazyNamed(() => import("@/features/participant/pages/ParticipantResultsPage"), "ParticipantResultsPage");
+const TeamsMatchmakingPage = lazyNamed(() => import("@/features/teams/pages/TeamsMatchmakingPage"), "TeamsMatchmakingPage");
+const TeamDetailPage = lazyNamed(() => import("@/features/teams/pages/TeamDetailPage"), "TeamDetailPage");
+const SubmissionsListPage = lazyNamed(() => import("@/features/submissions/pages/SubmissionsListPage"), "SubmissionsListPage");
+const SubmissionEditorPage = lazyNamed(() => import("@/features/submissions/pages/SubmissionEditorPage"), "SubmissionEditorPage");
+const SubmissionDetailPage = lazyNamed(() => import("@/features/submissions/pages/SubmissionDetailPage"), "SubmissionDetailPage");
+const OrganizationsExplorePage = lazyNamed(() => import("@/features/organizations/pages/OrganizationsExplorePage"), "OrganizationsExplorePage");
+const InboxPage = lazyNamed(() => import("@/features/notifications/pages/InboxPage"), "InboxPage");
+const SupportTicketsPage = lazyNamed(() => import("@/features/participant/pages/SupportTicketsPage"), "SupportTicketsPage");
+const SupportTicketDetailPage = lazyNamed(() => import("@/features/participant/pages/SupportTicketDetailPage"), "SupportTicketDetailPage");
+const ApplyOrganizationPage = lazyNamed(() => import("@/features/participant/pages/ApplyOrganizationPage"), "ApplyOrganizationPage");
+const UserProfilePage = lazyNamed(() => import("@/features/participant/pages/UserProfilePage"), "UserProfilePage");
+const UserSettingsPage = lazyNamed(() => import("@/features/participant/pages/UserSettingsPage"), "UserSettingsPage");
+
+const OrgDashboard = lazyNamed(() => import("@/features/org-admin/pages/OrgDashboard"), "OrgDashboard");
+const OrgChallengesPage = lazyNamed(() => import("@/features/org-admin/pages/OrgChallengesPage"), "OrgChallengesPage");
+const OrgChallengeEditorPage = lazyNamed(() => import("@/features/org-admin/pages/OrgChallengeEditorPage"), "OrgChallengeEditorPage");
+const OrgSubmissionsPoolPage = lazyNamed(() => import("@/features/org-admin/pages/OrgSubmissionsPoolPage"), "OrgSubmissionsPoolPage");
+const OrgJudgingManagementPage = lazyNamed(() => import("@/features/org-admin/pages/OrgJudgingManagementPage"), "OrgJudgingManagementPage");
+const OrgResultsManagementPage = lazyNamed(() => import("@/features/org-admin/pages/OrgResultsManagementPage"), "OrgResultsManagementPage");
+const OrgParticipantsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgParticipantsPage"), "OrgParticipantsPage");
+const OrgTeamsOversightPage = lazyNamed(() => import("@/features/org-admin/pages/OrgTeamsOversightPage"), "OrgTeamsOversightPage");
+const OrgAnnouncementsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgAnnouncementsPage"), "OrgAnnouncementsPage");
+const OrgMembersPage = lazyNamed(() => import("@/features/org-admin/pages/OrgMembersPage"), "OrgMembersPage");
+const OrgInvitationsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgInvitationsPage"), "OrgInvitationsPage");
+const OrgJoinCodesPage = lazyNamed(() => import("@/features/org-admin/pages/OrgJoinCodesPage"), "OrgJoinCodesPage");
+const OrgJoinRequestsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgJoinRequestsPage"), "OrgJoinRequestsPage");
+const OrgPortfolioPage = lazyNamed(() => import("@/features/org-admin/pages/OrgPortfolioPage"), "OrgPortfolioPage");
+const OrgPortfolioDetailPage = lazyNamed(() => import("@/features/org-admin/pages/OrgPortfolioDetailPage"), "OrgPortfolioDetailPage");
+const OrgFormsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgFormsPage"), "OrgFormsPage");
+const OrgFormDetailPage = lazyNamed(() => import("@/features/org-admin/pages/OrgFormDetailPage"), "OrgFormDetailPage");
+const OrgExportsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgExportsPage"), "OrgExportsPage");
+const OrgIntegrationsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgIntegrationsPage"), "OrgIntegrationsPage");
+const OrgAnalyticsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgAnalyticsPage"), "OrgAnalyticsPage");
+const OrgAuditPage = lazyNamed(() => import("@/features/org-admin/pages/OrgAuditPage"), "OrgAuditPage");
+const OrgSettingsPage = lazyNamed(() => import("@/features/org-admin/pages/OrgSettingsPage"), "OrgSettingsPage");
+
+const JudgeDashboard = lazyNamed(() => import("@/features/judging/pages/JudgeDashboard"), "JudgeDashboard");
+const JudgeEvaluationPage = lazyNamed(() => import("@/features/judging/pages/JudgeEvaluationPage"), "JudgeEvaluationPage");
+
+const AdminDashboard = lazyNamed(() => import("@/features/superadmin/pages/AdminDashboard"), "AdminDashboard");
+const AdminOrganizationsPage = lazyNamed(() => import("@/features/superadmin/pages/AdminOrganizationsPage"), "AdminOrganizationsPage");
+const AdminChallengesPage = lazyNamed(() => import("@/features/superadmin/pages/AdminChallengesPage"), "AdminChallengesPage");
+const AdminModerationPage = lazyNamed(() => import("@/features/superadmin/pages/AdminModerationPage"), "AdminModerationPage");
+const AdminSupportPage = lazyNamed(() => import("@/features/superadmin/pages/AdminSupportPage"), "AdminSupportPage");
+const AdminHealthPage = lazyNamed(() => import("@/features/superadmin/pages/AdminHealthPage"), "AdminHealthPage");
+const AdminAuditLogsPage = lazyNamed(() => import("@/features/superadmin/pages/AdminAuditLogsPage"), "AdminAuditLogsPage");
+const AdminUsersPage = lazyNamed(() => import("@/features/superadmin/pages/AdminUsersPage"), "AdminUsersPage");
+const AdminAnalyticsPage = lazyNamed(() => import("@/features/superadmin/pages/AdminAnalyticsPage"), "AdminAnalyticsPage");
+const AdminPlatformSettingsPage = lazyNamed(() => import("@/features/superadmin/pages/AdminPlatformSettingsPage"), "AdminPlatformSettingsPage");
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // Data stays authoritative for five minutes, so moving between pages
+      // inside the app serves from cache instead of refetching. (Verified:
+      // a client-side return visit issues zero requests. A full browser
+      // reload necessarily refetches — the cache lives in the JS heap.)
       staleTime: 1000 * 60 * 5,
+      // Outlive staleTime so a page revisited after its data went stale still
+      // paints instantly from cache while it revalidates in the background,
+      // rather than dropping to a spinner. With the default 5 minutes the
+      // entry was evicted at the exact moment it became stale.
+      gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
-      retry: 1,
+      // Retrying a 4xx cannot succeed — the request was refused, not dropped.
+      // It only doubles the latency the user waits through and doubles the
+      // browser's console noise. 408/429 are the exceptions: both explicitly
+      // mean "try again". Everything else (network/5xx) keeps one retry.
+      retry: (failureCount, error) => {
+        const status = (error as { status?: number } | null)?.status;
+        if (status !== undefined && status >= 400 && status < 500) {
+          return status === 408 || status === 429 ? failureCount < 1 : false;
+        }
+        return failureCount < 1;
+      },
+    },
+    mutations: {
+      // A mutation is not idempotent unless the endpoint says so (several
+      // require an explicit Idempotency-Key); never replay one automatically.
+      retry: false,
     },
   },
 });
@@ -111,7 +155,8 @@ export default function App() {
       <AuthProvider>
         <ErrorBoundary>
           <BrowserRouter>
-            <Routes>
+            <React.Suspense fallback={<div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Loading workspace...</div>}>
+              <Routes>
               {/* Public Experience Routes */}
               <Route path="/" element={<PublicShell />}>
                 <Route index element={<PublicLandingPage />} />
@@ -151,13 +196,16 @@ export default function App() {
                 <Route path="public/about" element={<PublicAboutPage />} />
 
                 {/* Authentication & Onboarding Routes */}
-                <Route path="auth/signin" element={<SignInPage />} />
-                <Route path="auth/signup" element={<SignUpPage />} />
+                <Route path="auth/signin" element={<PublicOnlyRoute><SignInPage /></PublicOnlyRoute>} />
+                <Route path="auth/signup" element={<PublicOnlyRoute><SignUpPage /></PublicOnlyRoute>} />
                 <Route path="auth/verify-email" element={<VerifyEmailPage />} />
                 <Route path="auth/verify-2fa" element={<TwoFactorVerifyPage />} />
                 <Route path="auth/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="auth/reset-password" element={<ResetPasswordPage />} />
                 <Route path="invitations/:token" element={<InvitationLandingPage />} />
+                <Route path="invitations/:token/accept" element={<InvitationLandingPage />} />
+                <Route path="team-invitations/:token/accept" element={<RoleInvitationLandingPage kind="team" />} />
+                <Route path="challenge-staff-invitations/:token/accept" element={<RoleInvitationLandingPage kind="staff" />} />
                 {/* No standalone "onboarding wizard" concept on the
                     backend — profile setup, join-code redemption, and
                     invitation acceptance are already independent real
@@ -207,15 +255,19 @@ export default function App() {
                 <Route path="organizations" element={<OrganizationsExplorePage />} />
                 <Route path="invitations" element={<InvitationLandingPage />} />
                 <Route path="apply-organization" element={<ApplyOrganizationPage />} />
-                {/* Results are public content by construction — reuse the
-                    real public results page rather than a separate
-                    authenticated duplicate. */}
-                <Route path="results" element={<Navigate to="/results" replace />} />
-                <Route path="support" element={<SupportTicketsPage />} />
+                <Route path="results" element={<ParticipantResultsPage />} />
+                {/* Inbox and Support Desk are both "messages addressed to
+                    me"; profile and settings are both "my account". Grouped
+                    behind one nav entry each, with their routes preserved. */}
+                <Route element={<ParticipantMessagesSectionLayout />}>
+                  <Route path="inbox" element={<InboxPage />} />
+                  <Route path="support" element={<SupportTicketsPage />} />
+                </Route>
                 <Route path="support/:ticketId" element={<SupportTicketDetailPage />} />
-                <Route path="inbox" element={<InboxPage />} />
-                <Route path="profile" element={<UserProfilePage />} />
-                <Route path="settings" element={<UserSettingsPage />} />
+                <Route element={<ParticipantAccountSectionLayout />}>
+                  <Route path="profile" element={<UserProfilePage />} />
+                  <Route path="settings" element={<UserSettingsPage />} />
+                </Route>
               </Route>
 
               {/* Organization Admin Routes */}
@@ -227,9 +279,15 @@ export default function App() {
                 <Route path="challenges/:challengeId/participants" element={<OrgParticipantsPage />} />
                 <Route path="challenges/:challengeId/teams" element={<OrgTeamsOversightPage />} />
                 <Route path="challenges/:challengeId/announcements" element={<OrgAnnouncementsPage />} />
-                <Route path="challenges/:challengeId/judging" element={<OrgJudgingManagementPage />} />
-                <Route path="challenges/:challengeId/results" element={<OrgResultsManagementPage />} />
-                <Route path="challenges/:challengeId/submissions" element={<OrgSubmissionsPoolPage />} />
+                {/* Submissions pool, judging setup, and results are three
+                    stages of one evaluation workflow on the same challenge —
+                    grouped so an organizer moves between them without
+                    returning to the challenge list each time. */}
+                <Route element={<OrgEvaluationSectionLayout />}>
+                  <Route path="challenges/:challengeId/submissions" element={<OrgSubmissionsPoolPage />} />
+                  <Route path="challenges/:challengeId/judging" element={<OrgJudgingManagementPage />} />
+                  <Route path="challenges/:challengeId/results" element={<OrgResultsManagementPage />} />
+                </Route>
                 {/* Submissions/judging/participants/teams/announcements are
                     always challenge-scoped on the backend — there is no
                     org-wide resource for any of them. These bare
@@ -300,19 +358,29 @@ export default function App() {
                     />
                   }
                 />
-                <Route path="members" element={<OrgMembersPage />} />
-                <Route path="invitations" element={<OrgInvitationsPage />} />
-                <Route path="join-codes" element={<OrgJoinCodesPage />} />
-                <Route path="join-requests" element={<OrgJoinRequestsPage />} />
+                {/* Related admin surfaces are grouped behind one nav entry
+                    with in-page tabs. Each keeps its own route, URL, and
+                    permission guard, so existing links and deep links are
+                    unaffected and a tab the viewer cannot use is not shown. */}
+                <Route element={<OrgAccessSectionLayout />}>
+                  <Route path="members" element={<OrgMembersPage />} />
+                  <Route path="invitations" element={<OrgInvitationsPage />} />
+                  <Route path="join-codes" element={<OrgJoinCodesPage />} />
+                  <Route path="join-requests" element={<OrgJoinRequestsPage />} />
+                </Route>
                 <Route path="portfolio" element={<OrgPortfolioPage />} />
                 <Route path="portfolio/:itemId" element={<OrgPortfolioDetailPage />} />
                 <Route path="forms" element={<OrgFormsPage />} />
                 <Route path="forms/:formId" element={<OrgFormDetailPage />} />
-                <Route path="analytics" element={<OrgAnalyticsPage />} />
-                <Route path="exports" element={<OrgExportsPage />} />
+                <Route element={<OrgInsightsSectionLayout />}>
+                  <Route path="analytics" element={<OrgAnalyticsPage />} />
+                  <Route path="exports" element={<OrgExportsPage />} />
+                </Route>
                 <Route path="integrations" element={<OrgIntegrationsPage />} />
-                <Route path="audit" element={<OrgAuditPage />} />
-                <Route path="settings" element={<OrgSettingsPage />} />
+                <Route element={<OrgGovernanceSectionLayout />}>
+                  <Route path="settings" element={<OrgSettingsPage />} />
+                  <Route path="audit" element={<OrgAuditPage />} />
+                </Route>
               </Route>
 
               {/* Judge Suite Routes */}
@@ -334,16 +402,16 @@ export default function App() {
                 <Route path="challenges" element={<AdminChallengesPage />} />
                 <Route path="health" element={<AdminHealthPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-                {/* No real platform settings/feature-flag/user-directory/analytics endpoints exist server-side */}
-                <Route path="users" element={<Navigate to="/admin" replace />} />
-                <Route path="analytics" element={<Navigate to="/admin" replace />} />
-                <Route path="platform-settings" element={<Navigate to="/admin" replace />} />
-                <Route path="settings" element={<Navigate to="/admin" replace />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="platform-settings" element={<AdminPlatformSettingsPage />} />
+                <Route path="settings" element={<Navigate to="/admin/platform-settings" replace />} />
               </Route>
 
               {/* 404 Catch-all */}
               <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+              </Routes>
+            </React.Suspense>
           </BrowserRouter>
         </ErrorBoundary>
       </AuthProvider>

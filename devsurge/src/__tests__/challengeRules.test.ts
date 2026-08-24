@@ -3,14 +3,14 @@ import { describe, it, expect } from "vitest";
 describe("Challenge Participation & Submission Rules", () => {
   it("enforces maximum 4 screenshots limit on submissions", () => {
     const validScreenshots = [
-      "https://devarena.io/shot1.png",
-      "https://devarena.io/shot2.png",
-      "https://devarena.io/shot3.png",
-      "https://devarena.io/shot4.png",
+      "https://vusurge.io/shot1.png",
+      "https://vusurge.io/shot2.png",
+      "https://vusurge.io/shot3.png",
+      "https://vusurge.io/shot4.png",
     ];
     const invalidScreenshots = [
       ...validScreenshots,
-      "https://devarena.io/shot5.png",
+      "https://vusurge.io/shot5.png",
     ];
 
     expect(validScreenshots.length).toBeLessThanOrEqual(4);

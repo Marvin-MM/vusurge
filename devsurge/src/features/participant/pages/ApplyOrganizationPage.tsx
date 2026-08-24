@@ -18,7 +18,7 @@ export function ApplyOrganizationPage() {
 
         <PageHeader
           title="Apply to Create an Organization"
-          description="Host challenges, manage members, and run judging under your own organization on DevArena."
+          description="Host challenges, manage members, and run judging under your own organization on VUSurge."
         />
 
         <OrganizationApplicationForm onSubmitted={() => setTimeout(() => navigate("/app"), 2500)} />

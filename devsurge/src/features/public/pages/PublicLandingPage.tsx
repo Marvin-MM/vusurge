@@ -25,7 +25,7 @@ import { FAQList, FAQItem } from "@/components/shared/FAQList";
 
 const previewFAQs: FAQItem[] = [
   {
-    question: "How does DevArena work?",
+    question: "How does VUSurge work?",
     answer:
       "Organizations run challenges — hackathons, bounties, or open calls. You browse public challenges, register solo or with a team, submit your project before the deadline, and assigned judges score it against a published rubric.",
   },
@@ -65,7 +65,7 @@ export function PublicLandingPage() {
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl">
-            DevArena is where organizations host hackathons and innovation challenges, participants form teams and
+            VUSurge is where organizations host hackathons and innovation challenges, participants form teams and
             submit projects, and judges score them against structured, weighted rubrics — end to end.
           </p>
 
@@ -107,7 +107,7 @@ export function PublicLandingPage() {
         </section>
       )}
 
-      {/* 3. How DevArena Works */}
+      {/* 3. How VUSurge Works */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="space-y-2 text-center max-w-2xl mx-auto">
           <span className="text-xs font-bold uppercase tracking-widest text-primary">How It Works</span>

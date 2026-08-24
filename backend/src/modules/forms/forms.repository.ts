@@ -43,6 +43,19 @@ export interface FormResponseRow {
   updatedAt: Date
 }
 
+/**
+ * A submitted response plus the respondent's identity. Resolved here because
+ * `/users/:id/profile` answers 404 for anyone the caller does not share an
+ * organization with, and a form respondent frequently is not an org member
+ * (a CHALLENGE_PARTICIPATION screening form is filled in by outside
+ * applicants by design) — leaving a reviewer unable to tell responses apart.
+ * The listing route is already gated on organization.manage_forms.
+ */
+export interface FormResponseWithRespondentRow extends FormResponseRow {
+  displayName: string | null
+  email: string
+}
+
 export interface FormsRepository {
   createDefinition(
     client: PrismaTransactionClient,
@@ -166,7 +179,7 @@ export interface FormsRepository {
     organizationId: string,
     formVersionId: string,
     page: PageRequest,
-  ): Promise<Page<FormResponseRow>>
+  ): Promise<Page<FormResponseWithRespondentRow>>
 }
 
 export function createFormsRepository(): FormsRepository {
@@ -365,7 +378,23 @@ export function createFormsRepository(): FormsRepository {
         orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
         take: page.limit + 1,
       })
-      return buildPage(rows, page, (row) => ({ at: row.submittedAt.toISOString(), id: row.id }))
+      const users = await client.user.findMany({
+        where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
+        select: { id: true, email: true, profile: { select: { displayName: true } } },
+      })
+      const byId = new Map(users.map((user) => [user.id, user]))
+      return buildPage(
+        rows.map((row) => {
+          const user = byId.get(row.userId)
+          return {
+            ...row,
+            displayName: user?.profile?.displayName ?? null,
+            email: user?.email ?? '',
+          }
+        }),
+        page,
+        (row) => ({ at: row.submittedAt.toISOString(), id: row.id }),
+      )
     },
   }
 }

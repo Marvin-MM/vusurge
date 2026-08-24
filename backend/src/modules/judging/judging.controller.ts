@@ -70,6 +70,8 @@ function serializeJudgeAssignment(row: JudgeAssignmentRow) {
     staffAssignmentId: row.staffAssignmentId,
     submissionId: row.submissionId,
     status: row.status,
+    scorecardId: row.scorecard?.id ?? null,
+    scorecardStatus: row.scorecard?.status ?? null,
     createdAt: row.createdAt.toISOString(),
   }
 }

@@ -12,6 +12,7 @@ import type { FormResponseRow, FormsRepository } from '../forms/forms.repository
 import { validateFormResponseData } from '../forms/forms.service'
 import type { MembershipsRepository } from '../memberships/memberships.repository'
 import type {
+  ParticipationListRow,
   ParticipationRepository,
   ParticipationRow,
   ParticipationStatus,
@@ -80,7 +81,7 @@ export interface ParticipationService {
     challengeId: string,
     status: ParticipationStatus | undefined,
     query: { limit?: number; cursor?: string },
-  ): Promise<Page<ParticipationRow>>
+  ): Promise<Page<ParticipationListRow>>
   approve(
     access: AccessContext,
     organizationId: string,
@@ -304,7 +305,11 @@ export function createParticipationService(
           )
           if (definition === null) return null
 
-          const version = await formsRepository.findPublishedVersion(tx, organizationId, definition.id)
+          const version = await formsRepository.findPublishedVersion(
+            tx,
+            organizationId,
+            definition.id,
+          )
           if (version === null) return null
 
           return {

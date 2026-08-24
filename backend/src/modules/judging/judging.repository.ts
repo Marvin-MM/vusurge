@@ -146,6 +146,7 @@ export interface JudgeAssignmentRow {
   conflictDeclaredAt: Date | null
   recusedAt: Date | null
   createdAt: Date
+  scorecard?: { id: string; status: ScorecardStatus } | null
 }
 
 export interface ScorecardRow {
@@ -670,6 +671,7 @@ export function createJudgingRepository(): JudgingRepository {
     async listJudgeAssignmentsForChallenge(client, organizationId, challengeId) {
       return client.judgeAssignment.findMany({
         where: { organizationId, challengeId },
+        include: { scorecard: { select: { id: true, status: true } } },
         orderBy: { createdAt: 'asc' },
       })
     },

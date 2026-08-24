@@ -5,6 +5,7 @@ import type {
   FormDefinitionRow,
   FormPurpose,
   FormResponseRow,
+  FormResponseWithRespondentRow,
   FormVersionRow,
 } from './forms.repository'
 import type { FormsService } from './forms.service'
@@ -49,9 +50,13 @@ function serializeResponse(row: FormResponseRow) {
   }
 }
 
-function serializeResponsePage(page: Page<FormResponseRow>) {
+function serializeResponsePage(page: Page<FormResponseWithRespondentRow>) {
   return {
-    items: page.items.map(serializeResponse),
+    items: page.items.map((row) => ({
+      ...serializeResponse(row),
+      displayName: row.displayName,
+      email: row.email,
+    })),
     hasMore: page.hasMore,
     nextCursor: page.nextCursor,
   }

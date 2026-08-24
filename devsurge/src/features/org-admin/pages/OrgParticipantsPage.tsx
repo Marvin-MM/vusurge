@@ -10,27 +10,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { LoadMoreButton } from "@/components/shared/LoadMoreButton";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
-import { useAdminParticipants, useApproveParticipant, useRejectParticipant } from "@/features/org-admin/api/queries";
-import { useUserProfile } from "@/features/users/api/queries";
+import { useAdminParticipants, useApproveParticipant, useDisqualifyParticipant, useReinstateParticipant, useRejectParticipant } from "@/features/org-admin/api/queries";
 import { toast } from "sonner";
 
 function ParticipantRow({
   participant,
   onApprove,
   onReject,
+  onDisqualify,
+  onReinstate,
 }: {
-  participant: { id: string; userId: string; status: string; appliedAt: string };
+  participant: {
+    id: string;
+    userId: string;
+    status: string;
+    appliedAt: string;
+    displayName?: string | null;
+    email?: string;
+  };
   onApprove: () => void;
   onReject: () => void;
+  onDisqualify: () => void;
+  onReinstate: () => void;
 }) {
-  const { data: profile } = useUserProfile(participant.userId);
   const isPending = participant.status === "PENDING";
 
   return (
     <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
       <div className="min-w-0 space-y-0.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-foreground truncate">{profile?.displayName || "Participant"}</span>
+          <span className="text-xs font-bold text-foreground truncate">
+            {participant.displayName || participant.email || "Unnamed participant"}
+          </span>
           <Badge
             variant="secondary"
             className={`text-[10px] font-mono ${
@@ -59,6 +70,16 @@ function ParticipantRow({
           </Button>
         </div>
       )}
+      {participant.status === "APPROVED" && (
+        <Button variant="outline" size="sm" onClick={onDisqualify} className="text-xs h-7 text-destructive border-destructive/30">
+          Disqualify
+        </Button>
+      )}
+      {participant.status === "DISQUALIFIED" && (
+        <Button variant="outline" size="sm" onClick={onReinstate} className="text-xs h-7">
+          Reinstate
+        </Button>
+      )}
     </div>
   );
 }
@@ -69,8 +90,10 @@ export function OrgParticipantsPage() {
   const { items: participants, isLoading, hasMore, loadMore, isLoadingMore } = useAdminParticipants(orgId, challengeId, statusFilter === "ALL" ? undefined : statusFilter);
   const approveMutation = useApproveParticipant(orgId, challengeId);
   const rejectMutation = useRejectParticipant(orgId, challengeId);
+  const disqualifyMutation = useDisqualifyParticipant(orgId, challengeId);
+  const reinstateMutation = useReinstateParticipant(orgId, challengeId);
 
-  const [rejectTarget, setRejectTarget] = React.useState<{ id: string } | null>(null);
+  const [decision, setDecision] = React.useState<{ id: string; action: "reject" | "disqualify" | "reinstate" } | null>(null);
   const [reason, setReason] = React.useState("");
 
   const pendingCount = participants.filter((p) => p.status === "PENDING").length;
@@ -117,6 +140,7 @@ export function OrgParticipantsPage() {
               <SelectItem value="PENDING" className="text-xs">Pending</SelectItem>
               <SelectItem value="APPROVED" className="text-xs">Approved</SelectItem>
               <SelectItem value="REJECTED" className="text-xs">Rejected</SelectItem>
+              <SelectItem value="DISQUALIFIED" className="text-xs">Disqualified</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -142,9 +166,11 @@ export function OrgParticipantsPage() {
                     )
                   }
                   onReject={() => {
-                    setRejectTarget(p);
+                    setDecision({ id: p.id, action: "reject" });
                     setReason("");
                   }}
+                  onDisqualify={() => { setDecision({ id: p.id, action: "disqualify" }); setReason(""); }}
+                  onReinstate={() => { setDecision({ id: p.id, action: "reinstate" }); setReason(""); }}
                 />
               ))
             )}
@@ -152,35 +178,40 @@ export function OrgParticipantsPage() {
         </Card>
         <LoadMoreButton hasMore={hasMore} isLoadingMore={isLoadingMore} onClick={loadMore} />
 
-        <Dialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && setRejectTarget(null)}>
+        <Dialog open={Boolean(decision)} onOpenChange={(open) => !open && setDecision(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
-                Reject Participant
+                {decision ? `${decision.action[0].toUpperCase()}${decision.action.slice(1)} Participant` : "Update Participant"}
               </DialogTitle>
-              <DialogDescription className="text-xs">Provide a reason for rejecting this application.</DialogDescription>
+              <DialogDescription className="text-xs">Provide a reason of at least 10 characters. It will be recorded in the audit trail.</DialogDescription>
             </DialogHeader>
             <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason..." className="text-xs h-9" required />
             <DialogFooter className="pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setRejectTarget(null)} className="text-xs">Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => setDecision(null)} className="text-xs">Cancel</Button>
               <Button
                 variant="destructive"
                 size="sm"
-                disabled={rejectMutation.isPending}
+                disabled={!decision || reason.trim().length < 10 || rejectMutation.isPending || disqualifyMutation.isPending || reinstateMutation.isPending}
                 onClick={() => {
-                  if (!rejectTarget) return;
-                  rejectMutation.mutate(
-                    { participationId: rejectTarget.id, reason },
+                  if (!decision) return;
+                  const mutation = decision.action === "reject" ? rejectMutation : decision.action === "disqualify" ? disqualifyMutation : reinstateMutation;
+                  mutation.mutate(
+                    { participationId: decision.id, reason: reason.trim() },
                     {
-                      onSuccess: () => { toast.success("Participant rejected."); setRejectTarget(null); },
-                      onError: (err: any) => toast.error(err?.message || "Failed to reject."),
+                      onSuccess: () => {
+                        const pastTense = decision.action === "reject" ? "rejected" : decision.action === "disqualify" ? "disqualified" : "reinstated";
+                        toast.success(`Participant ${pastTense}.`);
+                        setDecision(null);
+                      },
+                      onError: (err: any) => toast.error(err?.message || "Failed to update participant."),
                     }
                   );
                 }}
                 className="text-xs font-semibold px-4"
               >
-                {rejectMutation.isPending ? "Rejecting..." : "Confirm Reject"}
+                {rejectMutation.isPending || disqualifyMutation.isPending || reinstateMutation.isPending ? "Saving..." : "Confirm"}
               </Button>
             </DialogFooter>
           </DialogContent>

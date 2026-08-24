@@ -154,6 +154,10 @@ export const AccountDeletionRequestResponse = t.Object({
   eligibleAt: t.String(),
 })
 
+export const AccountDeletionRequestStatusResponse = t.Object({
+  request: t.Union([AccountDeletionRequestResponse, t.Null()]),
+})
+
 export const CreateAccountDeletionRequestBody = t.Object({
   reason: t.Optional(t.String({ maxLength: 1000 })),
 })

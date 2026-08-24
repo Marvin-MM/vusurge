@@ -1,5 +1,4 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { Bell, Check, CheckCheck, UserPlus, Trophy, Megaphone, HelpCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { LoadMoreButton } from "@/components/shared/LoadMoreButton";
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/features/notifications/api/queries";
-import { NotificationCategory } from "@/types";
+import { NotificationDetailDialog } from "@/features/notifications/components/NotificationDetailDialog";
+import { NotificationCategory, Notification } from "@/types";
 import { toast } from "sonner";
 
 const CATEGORY_ICON: Partial<Record<NotificationCategory, React.ElementType>> = {
@@ -18,10 +18,10 @@ const CATEGORY_ICON: Partial<Record<NotificationCategory, React.ElementType>> = 
 };
 
 export function InboxPage() {
-  const navigate = useNavigate();
   const { items: notifications, isLoading, hasMore, loadMore, isLoadingMore } = useNotifications();
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
+  const [openNotification, setOpenNotification] = React.useState<Notification | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
@@ -70,7 +70,11 @@ export function InboxPage() {
                     isUnread ? "bg-primary/5 border-primary/30" : "bg-card border-border"
                   }`}
                 >
-                  <div className="space-y-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setOpenNotification(notif)}
+                    className="space-y-2 min-w-0 text-left cursor-pointer flex-1"
+                  >
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-primary shrink-0" />
                       <span className="text-xs font-bold text-foreground">{notif.title}</span>
@@ -79,8 +83,8 @@ export function InboxPage() {
                         <Badge variant="default" className="text-[9px] px-1.5 py-0 font-bold bg-primary text-primary-foreground">NEW</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{notif.body}</p>
-                  </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{notif.body}</p>
+                  </button>
 
                   <div className="flex items-center gap-2 shrink-0">
                     {isUnread && (
@@ -89,12 +93,10 @@ export function InboxPage() {
                         <span>Mark Read</span>
                       </Button>
                     )}
-                    {notif.linkUrl && (
-                      <Button size="sm" variant="outline" onClick={() => navigate(notif.linkUrl!)} className="text-xs h-8 gap-1">
-                        <span>Open</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </Button>
-                    )}
+                    <Button size="sm" variant="outline" onClick={() => setOpenNotification(notif)} className="text-xs h-8 gap-1">
+                      <span>Open</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
                   </div>
                 </Card>
               );
@@ -103,6 +105,14 @@ export function InboxPage() {
           <LoadMoreButton hasMore={hasMore} isLoadingMore={isLoadingMore} onClick={loadMore} />
         </>
       )}
+
+      <NotificationDetailDialog
+        notification={openNotification}
+        open={openNotification !== null}
+        onOpenChange={(next) => {
+          if (!next) setOpenNotification(null);
+        }}
+      />
     </PageContainer>
   );
 }

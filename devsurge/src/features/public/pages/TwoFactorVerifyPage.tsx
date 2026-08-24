@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/api/client/authClient";
+import { safeReturnTo } from "@/lib/safeReturnTo";
 
 /**
  * Shown when sign-in reports `twoFactorRedirect: true` — the password was
@@ -15,7 +16,7 @@ import { authClient } from "@/api/client/authClient";
 export function TwoFactorVerifyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/dashboard";
+  const returnTo = safeReturnTo(searchParams.get("returnTo"));
 
   const [mode, setMode] = React.useState<"totp" | "backup">("totp");
   const [code, setCode] = React.useState("");

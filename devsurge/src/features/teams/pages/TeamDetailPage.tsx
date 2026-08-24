@@ -243,15 +243,20 @@ export function TeamDetailPage() {
               <Copy className="h-3 w-3" />
               <span>Share Team URL</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/app/submissions/new?organizationId=${organizationId}&challengeId=${challengeId}&teamId=${team.id}`)}
-              className="text-xs h-8 gap-1.5"
-            >
-              <FileCheck2 className="h-3.5 w-3.5 text-primary" />
-              <span>Open Team Submission Draft</span>
-            </Button>
+            {/* A submission belongs to the caller's own team, so this is only
+                meaningful — and only permitted by the backend — for an actual
+                member of this team who is an approved challenge participant. */}
+            {isMember && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/app/submissions/new?organizationId=${organizationId}&challengeId=${challengeId}`)}
+                className="text-xs h-8 gap-1.5"
+              >
+                <FileCheck2 className="h-3.5 w-3.5 text-primary" />
+                <span>Open Team Submission Draft</span>
+              </Button>
+            )}
           </div>
         </div>
       </Card>

@@ -37,7 +37,7 @@ export function NotFoundPage() {
         <Button size="sm" asChild className="gap-1.5 text-xs">
           <Link to="/">
             <Home className="h-3.5 w-3.5" />
-            DevArena Home
+            VUSurge Home
           </Link>
         </Button>
       </div>
@@ -112,7 +112,7 @@ export function OrganizationSuspendedPage() {
       </div>
       <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Organization Suspended</h1>
       <p className="mt-2 text-sm text-muted-foreground max-w-lg">
-        This organization workspace has been suspended or frozen by DevArena Platform Trust & Safety due to pending policy review or administrative lock.
+        This organization workspace has been suspended or frozen by VUSurge Platform Trust & Safety due to pending policy review or administrative lock.
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
         If you are the organization owner, please reach out to platform operations via the support desk.

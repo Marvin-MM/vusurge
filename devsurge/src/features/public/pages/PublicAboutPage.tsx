@@ -11,13 +11,13 @@ export function PublicAboutPage() {
       <div className="space-y-4 text-center max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
           <Sparkles className="h-3.5 w-3.5" />
-          <span>About DevArena</span>
+          <span>About VUSurge</span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight">
           A platform for running challenges end to end
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-          DevArena gives organizations everything needed to host a challenge — from publishing details and managing
+          VUSurge gives organizations everything needed to host a challenge — from publishing details and managing
           teams to structured judging and published results — instead of stitching together spreadsheets, forms, and
           chat channels.
         </p>
@@ -31,7 +31,7 @@ export function PublicAboutPage() {
           </div>
           <h3 className="text-base font-bold text-foreground">Multi-Tenant by Design</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Any organization can apply to host on DevArena. Each organization manages its own members, roles, and
+            Any organization can apply to host on VUSurge. Each organization manages its own members, roles, and
             challenges, independent of every other organization on the platform.
           </p>
         </Card>

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
-import { apiGet } from "@/api/client/axiosClient";
+import { apiGet, apiPost } from "@/api/client/axiosClient";
 import { Organization, Challenge } from "@/types";
 
 export interface PublicSearchResults {
@@ -41,6 +41,47 @@ export function useDeclineInvitation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invitation"] });
     },
+  });
+}
+
+export function useAcceptTeamInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => apiPost<{ id: string; challengeId: string }>(`/team-invitations/${token}/accept`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me", "team-invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
+    },
+  });
+}
+
+export function useDeclineTeamInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => apiPost(`/team-invitations/${token}/decline`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me", "team-invitations"] }),
+  });
+}
+
+export function useAcceptStaffInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiPost<{ id: string; challengeId: string; role: "JUDGE" | "MENTOR" }>(
+        `/challenge-staff-invitations/${token}/accept`,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me", "challenge-staff-invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["judging"] });
+    },
+  });
+}
+
+export function useDeclineStaffInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => apiPost(`/challenge-staff-invitations/${token}/decline`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me", "challenge-staff-invitations"] }),
   });
 }
 

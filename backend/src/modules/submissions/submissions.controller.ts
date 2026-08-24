@@ -42,6 +42,7 @@ function serializeDetail(detail: SubmissionDetail) {
     status: detail.submission.status,
     draftVersion: detail.draftVersion === null ? null : serializeVersion(detail.draftVersion),
     screenshots: detail.screenshots.map((s) => ({ slot: s.slot, mediaAssetId: s.mediaAssetId })),
+    presentationFiles: detail.presentationFiles,
     disqualificationReason: detail.submission.disqualificationReason,
     createdAt: detail.submission.createdAt.toISOString(),
   }

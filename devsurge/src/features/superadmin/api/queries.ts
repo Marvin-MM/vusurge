@@ -27,6 +27,31 @@ export function usePlatformOrganization(organizationId: string) {
   });
 }
 
+/**
+ * Per-organization audit activity rollup — `GET
+ * /platform/organizations/:id/audit-summary`. The only aggregate the platform
+ * API exposes anywhere (cursor pagination deliberately returns no totals), so
+ * it is the one place a superadmin can see volume rather than a page of rows.
+ */
+export interface PlatformAuditSummary {
+  totalEvents: number;
+  firstEventAt: string | null;
+  lastEventAt: string | null;
+  topActions: { action: string; count: number }[];
+}
+
+export function usePlatformOrganizationAuditSummary(
+  organizationId: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: ["platform", "organizations", organizationId, "audit-summary"],
+    queryFn: () =>
+      apiGet<PlatformAuditSummary>(`/platform/organizations/${organizationId}/audit-summary`),
+    enabled: Boolean(organizationId) && (options?.enabled ?? true),
+  });
+}
+
 export function useSuspendOrganization() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -148,10 +173,23 @@ export function usePlatformSupportTickets(filters?: { status?: string; priority?
   return useCursorList<SupportTicket>(["platform", "support", "tickets", filters], "/platform/support/tickets", filters);
 }
 
+/**
+ * The detail endpoint returns a wrapper — the ticket plus its user-visible
+ * comment thread and its staff-only internal notes — not a bare ticket. Typing
+ * it as a flat SupportTicket left every field undefined, which crashed the
+ * detail page on the first property access.
+ */
+export interface PlatformSupportTicketDetail {
+  ticket: SupportTicket;
+  comments: SupportTicketComment[];
+  internalNotes: SupportTicketComment[];
+}
+
 export function usePlatformSupportTicket(ticketId: string) {
   return useQuery({
     queryKey: ["platform", "support", "tickets", ticketId],
-    queryFn: () => apiGet<SupportTicket>(`/platform/support/tickets/${ticketId}`),
+    queryFn: () =>
+      apiGet<PlatformSupportTicketDetail>(`/platform/support/tickets/${ticketId}`),
     enabled: Boolean(ticketId),
   });
 }
@@ -219,6 +257,119 @@ export function useAddTicketInternalNote(ticketId: string) {
 
 export function usePlatformAudit(organizationId?: string, options?: { enabled?: boolean }) {
   return useCursorList<AuditEvent>(["platform", "audit", { organizationId }], "/platform/audit", organizationId ? { organizationId } : undefined, options);
+}
+
+// =============================================================================
+// Platform users, challenges, analytics, and deployment settings
+// =============================================================================
+
+export type PlatformRole = "PLATFORM_SUPERADMIN" | "PLATFORM_SUPPORT_AGENT";
+
+export interface PlatformUser {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  twoFactorEnabled: boolean;
+  deletedAt: string | null;
+  createdAt: string;
+  platformRoles: { id: string; role: PlatformRole; grantedAt: string }[];
+}
+
+export function usePlatformUsers(filters?: { search?: string; role?: PlatformRole }) {
+  return useCursorList<PlatformUser>(["platform", "users", filters], "/platform/users", filters);
+}
+
+export function useGrantPlatformRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, role, reason }: { userId: string; role: PlatformRole; reason: string }) =>
+      apiPost<PlatformUser>(`/platform/users/${userId}/roles/grant`, { role, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["platform", "analytics"] });
+    },
+  });
+}
+
+export function useRevokePlatformRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, role, reason }: { userId: string; role: PlatformRole; reason: string }) =>
+      apiPost<PlatformUser>(`/platform/users/${userId}/roles/revoke`, { role, reason }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["platform", "users"] }),
+  });
+}
+
+export interface PlatformChallenge {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  organizationSlug: string;
+  title: string;
+  slug: string;
+  status: string;
+  visibility: "ORG_MEMBERS" | "PUBLIC" | "UNLISTED";
+  moderationHiddenAt: string | null;
+  createdAt: string;
+}
+
+export function usePlatformChallenges(filters?: { search?: string; status?: string; visibility?: string }) {
+  return useCursorList<PlatformChallenge>(
+    ["platform", "challenges", filters],
+    "/platform/challenges",
+    filters,
+  );
+}
+
+export interface PlatformAnalyticsSummary {
+  users: number;
+  verifiedUsers: number;
+  usersWithTwoFactor: number;
+  activeOrganizations: number;
+  suspendedOrganizations: number;
+  challenges: number;
+  publicChallenges: number;
+  activeParticipations: number;
+  finalizedSubmissions: number;
+  openReports: number;
+  openSupportTickets: number;
+  generatedAt: string;
+}
+
+export function usePlatformAnalyticsSummary() {
+  return useQuery({
+    queryKey: ["platform", "analytics", "summary"],
+    queryFn: () => apiGet<PlatformAnalyticsSummary>("/platform/analytics/summary"),
+    staleTime: 60_000,
+  });
+}
+
+export interface PlatformSettings {
+  environment: string;
+  serviceVersion: string;
+  featureFlags: Record<string, boolean>;
+  security: {
+    sessionExpiresInSeconds: number;
+    freshSessionMaxAgeSeconds: number;
+    rateLimitingEnabled: boolean;
+    failClosedOnHighRisk: boolean;
+    accountDeletionGraceDays: number;
+  };
+  limits: {
+    maxRequestBodyBytes: number;
+    maxImageBytes: number;
+    maxDocumentBytes: number;
+    maxSubmissionScreenshots: number;
+  };
+}
+
+export function usePlatformSettings() {
+  return useQuery({
+    queryKey: ["platform", "settings"],
+    queryFn: () => apiGet<PlatformSettings>("/platform/settings"),
+    staleTime: 5 * 60_000,
+  });
 }
 
 // =============================================================================

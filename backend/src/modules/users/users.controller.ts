@@ -79,6 +79,18 @@ export function createUsersController(
       return service.getPublicProfile(userId, access.actor?.userId ?? null)
     },
 
+    async getPendingAccountDeletion(access: AccessContext) {
+      const { actor } = requireActor(access)
+      const request = await service.getPendingAccountDeletion(actor.userId)
+      return request === null
+        ? null
+        : {
+            ...request,
+            requestedAt: request.requestedAt.toISOString(),
+            eligibleAt: request.eligibleAt.toISOString(),
+          }
+    },
+
     async requestAccountDeletion(
       access: AccessContext,
       reason: string | undefined,

@@ -90,6 +90,7 @@ import { createParticipationRepository } from './participation/participation.rep
 import { participationRoutes } from './participation/participation.route'
 import { createParticipationService } from './participation/participation.service'
 import { createPlatformAdminController } from './platform-admin/platform-admin.controller'
+import { createPlatformAdminRepository } from './platform-admin/platform-admin.repository'
 import { platformAdminRoutes } from './platform-admin/platform-admin.route'
 import { createPlatformAdminService } from './platform-admin/platform-admin.service'
 import { createPublicController } from './public/public.controller'
@@ -337,6 +338,7 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
     infrastructure.transactions,
     infrastructure.config,
     paginationLimits,
+    infrastructure.logger,
   )
   const notificationsController = createNotificationsController(notificationsService)
 
@@ -404,12 +406,15 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
   const auditController = createAuditController(auditService)
 
   // --- platform admin ----------------------------------------------------
+  const platformAdminRepository = createPlatformAdminRepository()
   const platformAdminService = createPlatformAdminService(
     organizationsRepository,
     infrastructure.transactions,
     infrastructure.audit,
     paginationLimits,
     auditService,
+    platformAdminRepository,
+    infrastructure.config,
   )
   const platformAdminController = createPlatformAdminController(platformAdminService)
 

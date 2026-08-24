@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useParams } from "react-router-dom";
-import { Trophy, Medal, CheckCircle2, Send, Lock } from "lucide-react";
+import { Trophy, Medal, Lock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
-import { useAdminSubmissions, useAdminResults, useFinalizeResults, usePublishResults } from "@/features/org-admin/api/queries";
+import { useAdminSubmissions, useAdminResults, useFinalizeResults, usePublishResults, useRetractResults } from "@/features/org-admin/api/queries";
 import { useSubmission } from "@/features/submissions/api/queries";
 import { toast } from "sonner";
+import { useOrgChallenge } from "@/features/challenges/api/queries";
 
 function SubmissionTitle({ organizationId, challengeId, submissionId }: { organizationId: string; challengeId: string; submissionId: string }) {
   const { data } = useSubmission(organizationId, challengeId, submissionId);
@@ -20,12 +21,16 @@ function SubmissionTitle({ organizationId, challengeId, submissionId }: { organi
 export function OrgResultsManagementPage() {
   const { orgId = "", challengeId = "" } = useParams<{ orgId: string; challengeId: string }>();
   const { items: submissions } = useAdminSubmissions(orgId, challengeId, "FINALIZED");
+  const { data: challenge } = useOrgChallenge(orgId, challengeId);
   const { data: results = [] } = useAdminResults(orgId, challengeId);
   const finalizeMutation = useFinalizeResults(orgId, challengeId);
   const publishMutation = usePublishResults(orgId, challengeId);
+  const retractMutation = useRetractResults(orgId, challengeId);
 
   const [ranks, setRanks] = React.useState<Record<string, string>>({});
   const [publishModalOpen, setPublishModalOpen] = React.useState(false);
+  const [retractModalOpen, setRetractModalOpen] = React.useState(false);
+  const [retractionReason, setRetractionReason] = React.useState("");
 
   const hasResults = results.length > 0;
 
@@ -60,10 +65,19 @@ export function OrgResultsManagementPage() {
           description="Assign final rankings from finalized submissions, then publish."
           actions={
             hasResults && (
-              <Button size="sm" onClick={() => setPublishModalOpen(true)} className="text-xs font-semibold gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
-                <Trophy className="h-3.5 w-3.5" />
-                <span>Publish Results</span>
-              </Button>
+              <div className="flex gap-2">
+                {challenge?.status === "RESULTS_PUBLISHED" && (
+                  <Button size="sm" variant="outline" onClick={() => setRetractModalOpen(true)} className="text-xs gap-1.5 h-8">
+                    <RotateCcw className="h-3.5 w-3.5" /> Retract
+                  </Button>
+                )}
+                {challenge?.status !== "RESULTS_PUBLISHED" && (
+                  <Button size="sm" onClick={() => setPublishModalOpen(true)} className="text-xs font-semibold gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
+                    <Trophy className="h-3.5 w-3.5" />
+                    <span>Publish Results</span>
+                  </Button>
+                )}
+              </div>
             )
           }
         />
@@ -140,6 +154,35 @@ export function OrgResultsManagementPage() {
               <Button variant="ghost" size="sm" onClick={() => setPublishModalOpen(false)} className="text-xs">Cancel</Button>
               <Button size="sm" onClick={handlePublish} disabled={publishMutation.isPending} className="text-xs font-semibold px-4 bg-emerald-600 hover:bg-emerald-700 text-white">
                 {publishMutation.isPending ? "Publishing..." : "Confirm & Publish"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={retractModalOpen} onOpenChange={setRetractModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold">Retract Published Results</DialogTitle>
+              <DialogDescription className="text-xs">
+                This removes the public result snapshot. Enter an audit reason of at least 10 characters.
+              </DialogDescription>
+            </DialogHeader>
+            <Input value={retractionReason} onChange={(event) => setRetractionReason(event.target.value)} maxLength={1000} placeholder="Reason for retraction" />
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setRetractModalOpen(false)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                disabled={retractionReason.trim().length < 10 || retractMutation.isPending}
+                onClick={() => retractMutation.mutate(retractionReason.trim(), {
+                  onSuccess: () => {
+                    setRetractModalOpen(false);
+                    setRetractionReason("");
+                    toast.success("Published results retracted.");
+                  },
+                  onError: (error: any) => toast.error(error?.message || "Failed to retract results."),
+                })}
+              >
+                {retractMutation.isPending ? "Retracting..." : "Confirm retraction"}
               </Button>
             </DialogFooter>
           </DialogContent>

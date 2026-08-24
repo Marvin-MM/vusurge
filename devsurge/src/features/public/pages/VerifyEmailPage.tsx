@@ -4,6 +4,7 @@ import { MailCheck, RefreshCw, CheckCircle2, ArrowRight } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/api/client/authClient";
+import { safeReturnTo } from "@/lib/safeReturnTo";
 
 /**
  * Better Auth verifies email via a signed LINK in the email itself (opened
@@ -16,7 +17,7 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email") || "";
   const verified = searchParams.get("verified") === "true";
-  const returnTo = searchParams.get("returnTo") || "/app";
+  const returnTo = safeReturnTo(searchParams.get("returnTo"));
 
   const [resendState, setResendState] = React.useState<"idle" | "sending" | "sent" | "error">("idle");
 

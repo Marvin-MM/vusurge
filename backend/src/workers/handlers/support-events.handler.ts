@@ -18,7 +18,7 @@ export const handleSupportTicketUpdated: JobHandler = async (context) => {
   })
   if (user === null) return
 
-  const ticketUrl = `${context.infrastructure.config.app.webAppBaseUrl}/support/tickets/${payload.ticketId}`
+  const ticketUrl = `${context.infrastructure.config.app.webAppBaseUrl}/app/support/${payload.ticketId}`
   const { subject, text } = EmailTemplates.supportTicketUpdateEmail({
     subject: payload.subject,
     summary: payload.summary,

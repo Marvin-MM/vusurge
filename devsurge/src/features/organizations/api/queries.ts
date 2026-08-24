@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiGet, apiArray } from "@/api/client/axiosClient";
+import { apiGet, apiCursorList } from "@/api/client/axiosClient";
 import { useCursorList } from "@/lib/useCursorList";
 import { Organization, PublicInnovation, PublicProject, AuditEvent, Membership } from "@/types";
 
@@ -60,7 +60,10 @@ export function useOrganizationAuditEvents(organizationId: string) {
 export function useOrganizationMembers(organizationId: string) {
   return useQuery({
     queryKey: ["organizations", organizationId, "members"],
-    queryFn: () => apiArray<Membership>(`/organizations/${organizationId}/members`),
+    queryFn: () =>
+      apiCursorList<Membership>(`/organizations/${organizationId}/members`, {
+        params: { limit: 100, status: "ACTIVE" },
+      }),
     enabled: Boolean(organizationId),
   });
 }

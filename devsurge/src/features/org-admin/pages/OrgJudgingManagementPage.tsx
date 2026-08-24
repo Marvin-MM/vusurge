@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
 import {
@@ -18,10 +19,15 @@ import {
   useAdminJudgeAssignments,
   useAdminSubmissions,
   useCreateJudgeAssignment,
+  useDeleteJudgeAssignment,
+  useReassignJudgeAssignment,
+  useReopenScorecard,
   useAutoBalanceJudgeAssignments,
   useJudgingProgress,
   useFinalizeJudging,
+  useReleaseFeedback,
 } from "@/features/org-admin/api/queries";
+import { useOrgChallenge } from "@/features/challenges/api/queries";
 import { toast } from "sonner";
 
 interface DraftCriterion {
@@ -155,9 +161,17 @@ function RubricSection({ organizationId, challengeId }: { organizationId: string
 function AssignmentsSection({ organizationId, challengeId }: { organizationId: string; challengeId: string }) {
   const { data: staff = [] } = useAdminStaff(organizationId, challengeId);
   const { data: assignments = [] } = useAdminJudgeAssignments(organizationId, challengeId);
-  const { items: submissions } = useAdminSubmissions(organizationId, challengeId);
+  const { items: submissions } = useAdminSubmissions(organizationId, challengeId, "FINALIZED");
   const createAssignmentMutation = useCreateJudgeAssignment(organizationId, challengeId);
+  const deleteAssignmentMutation = useDeleteJudgeAssignment(organizationId, challengeId);
+  const reassignMutation = useReassignJudgeAssignment(organizationId, challengeId);
+  const reopenScorecardMutation = useReopenScorecard(organizationId, challengeId);
   const autoBalanceMutation = useAutoBalanceJudgeAssignments(organizationId, challengeId);
+  const [selectedJudge, setSelectedJudge] = React.useState("");
+  const [selectedSubmission, setSelectedSubmission] = React.useState("");
+  const [replacementJudges, setReplacementJudges] = React.useState<Record<string, string>>({});
+  const [reassignmentReasons, setReassignmentReasons] = React.useState<Record<string, string>>({});
+  const [reopenReasons, setReopenReasons] = React.useState<Record<string, string>>({});
 
   const judges = staff.filter((s) => s.role === "JUDGE" && s.status === "ACTIVE");
 
@@ -184,14 +198,103 @@ function AssignmentsSection({ organizationId, challengeId }: { organizationId: s
         {judges.length} active judge{judges.length === 1 ? "" : "s"} • {submissions.length} submission{submissions.length === 1 ? "" : "s"} • {assignments.length} assignment{assignments.length === 1 ? "" : "s"}
       </div>
 
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] border-b border-border/60 pb-4">
+        <Select value={selectedJudge} onValueChange={setSelectedJudge}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select judge" /></SelectTrigger>
+          <SelectContent>{judges.map((judge) => <SelectItem key={judge.id} value={judge.id}>Judge {judge.userId.slice(0, 8)}</SelectItem>)}</SelectContent>
+        </Select>
+        <Select value={selectedSubmission} onValueChange={setSelectedSubmission}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select submission" /></SelectTrigger>
+          <SelectContent>{submissions.map((submission) => <SelectItem key={submission.id} value={submission.id}>Submission {submission.id.slice(0, 8)}</SelectItem>)}</SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          className="h-9 text-xs"
+          disabled={!selectedJudge || !selectedSubmission || createAssignmentMutation.isPending}
+          onClick={() => createAssignmentMutation.mutate(
+            { staffAssignmentId: selectedJudge, submissionId: selectedSubmission },
+            {
+              onSuccess: () => { setSelectedSubmission(""); toast.success("Judge assigned."); },
+              onError: (error: any) => toast.error(error?.message || "Could not create assignment."),
+            },
+          )}
+        >
+          Assign
+        </Button>
+      </div>
+
       {assignments.length === 0 ? (
         <p className="text-xs text-muted-foreground">No assignments yet. Use Auto-Balance to distribute submissions across judges evenly.</p>
       ) : (
         <div className="space-y-2">
           {assignments.map((a) => (
-            <div key={a.id} className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between text-xs">
-              <span className="font-mono text-muted-foreground">Submission {a.submissionId.slice(0, 8)}...</span>
-              <Badge variant="outline" className="text-[10px]">{a.status}</Badge>
+            <div key={a.id} className="p-3 rounded-lg border border-border bg-muted/20 space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-muted-foreground">Submission {a.submissionId.slice(0, 8)}...</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px]">{a.status}</Badge>
+                  {a.scorecardStatus && <Badge variant="outline" className="text-[10px]">Scorecard {a.scorecardStatus}</Badge>}
+                  {a.status === "ASSIGNED" && (!a.scorecardStatus || a.scorecardStatus === "DRAFT") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive"
+                      disabled={deleteAssignmentMutation.isPending}
+                      onClick={() => deleteAssignmentMutation.mutate(a.id, { onSuccess: () => toast.success("Assignment removed."), onError: (error: any) => toast.error(error?.message || "Could not remove assignment.") })}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {a.status === "ASSIGNED" && (!a.scorecardStatus || a.scorecardStatus === "DRAFT") && (
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <Select value={replacementJudges[a.id] || ""} onValueChange={(value) => setReplacementJudges((current) => ({ ...current, [a.id]: value }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Replacement judge" /></SelectTrigger>
+                    <SelectContent>{judges.filter((judge) => judge.id !== a.staffAssignmentId).map((judge) => <SelectItem key={judge.id} value={judge.id}>Judge {judge.userId.slice(0, 8)}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Reason (10+ characters)"
+                    value={reassignmentReasons[a.id] || ""}
+                    onChange={(event) => setReassignmentReasons((current) => ({ ...current, [a.id]: event.target.value }))}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={!replacementJudges[a.id] || (reassignmentReasons[a.id] || "").trim().length < 10 || reassignMutation.isPending}
+                    onClick={() => reassignMutation.mutate(
+                      { assignmentId: a.id, newStaffAssignmentId: replacementJudges[a.id], reason: reassignmentReasons[a.id].trim() },
+                      { onSuccess: () => toast.success("Assignment reassigned."), onError: (error: any) => toast.error(error?.message || "Could not reassign assignment.") },
+                    )}
+                  >
+                    Reassign
+                  </Button>
+                </div>
+              )}
+              {a.scorecardId && (a.scorecardStatus === "SUBMITTED" || a.scorecardStatus === "LOCKED") && (
+                <div className="flex gap-2">
+                  <Input
+                    className="h-8 text-xs flex-1"
+                    placeholder="Reason to reopen scorecard (10+ characters)"
+                    value={reopenReasons[a.id] || ""}
+                    onChange={(event) => setReopenReasons((current) => ({ ...current, [a.id]: event.target.value }))}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={(reopenReasons[a.id] || "").trim().length < 10 || reopenScorecardMutation.isPending}
+                    onClick={() => reopenScorecardMutation.mutate(
+                      { scorecardId: a.scorecardId!, reason: reopenReasons[a.id].trim() },
+                      { onSuccess: () => toast.success("Scorecard reopened."), onError: (error: any) => toast.error(error?.message || "Could not reopen scorecard.") },
+                    )}
+                  >
+                    Reopen scorecard
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -202,7 +305,9 @@ function AssignmentsSection({ organizationId, challengeId }: { organizationId: s
 
 function ProgressSection({ organizationId, challengeId }: { organizationId: string; challengeId: string }) {
   const { data: progress } = useJudgingProgress(organizationId, challengeId);
+  const { data: challenge } = useOrgChallenge(organizationId, challengeId);
   const finalizeMutation = useFinalizeJudging(organizationId, challengeId);
+  const releaseFeedbackMutation = useReleaseFeedback(organizationId, challengeId);
 
   if (!progress) return null;
 
@@ -238,14 +343,26 @@ function ProgressSection({ organizationId, challengeId }: { organizationId: stri
           <div className="text-muted-foreground">Recused</div>
         </div>
       </div>
-      <Button
-        onClick={() => finalizeMutation.mutate(undefined, { onSuccess: () => toast.success("Judging finalized."), onError: (err: any) => toast.error(err?.message || "Failed to finalize.") })}
-        disabled={finalizeMutation.isPending}
-        className="text-xs font-semibold gap-1.5"
-      >
-        <Lock className="h-3.5 w-3.5" />
-        <span>Finalize Judging</span>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => finalizeMutation.mutate(undefined, { onSuccess: () => toast.success("Judging finalized."), onError: (err: any) => toast.error(err?.message || "Failed to finalize.") })}
+          disabled={finalizeMutation.isPending}
+          className="text-xs font-semibold gap-1.5"
+        >
+          <Lock className="h-3.5 w-3.5" />
+          <span>Finalize Judging</span>
+        </Button>
+        {!challenge?.feedbackReleasedAt && progress.submittedCount > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => releaseFeedbackMutation.mutate(undefined, { onSuccess: () => toast.success("Judge feedback released to participants."), onError: (error: any) => toast.error(error?.message || "Failed to release feedback.") })}
+            disabled={releaseFeedbackMutation.isPending}
+            className="text-xs font-semibold"
+          >
+            {releaseFeedbackMutation.isPending ? "Releasing..." : "Release Feedback"}
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }

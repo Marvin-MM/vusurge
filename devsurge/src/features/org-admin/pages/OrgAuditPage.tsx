@@ -9,15 +9,13 @@ import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { LoadMoreButton } from "@/components/shared/LoadMoreButton";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
 import { useOrgAuditEvents } from "@/features/org-admin/api/queries";
-import { useUserProfile } from "@/features/users/api/queries";
 import { useAuth } from "@/context/AuthContext";
 import { can } from "@/types/permissions";
 import { AuditEvent } from "@/types";
 
-function ActorName({ userId }: { userId: string | null }) {
-  const { data: profile } = useUserProfile(userId);
+function ActorName({ userId, displayName }: { userId: string | null; displayName?: string | null }) {
   if (!userId) return <>System</>;
-  return <>{profile?.displayName || userId.slice(0, 8)}</>;
+  return <>{displayName || userId.slice(0, 8)}</>;
 }
 
 function AuditRow({ event }: { event: AuditEvent }) {
@@ -32,7 +30,7 @@ function AuditRow({ event }: { event: AuditEvent }) {
               {event.action}
             </Badge>
             <span className="text-xs font-bold text-foreground">
-              <ActorName userId={event.actorUserId} />
+              <ActorName userId={event.actorUserId} displayName={event.actorDisplayName} />
             </span>
           </div>
           <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">

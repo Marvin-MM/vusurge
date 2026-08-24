@@ -54,6 +54,9 @@ import {
   useDeleteSponsor,
   useAdminStaff,
   useInviteStaff,
+  useStaffInvitations,
+  useRevokeStaffInvitation,
+  useRemoveStaff,
   useCreateTermsVersion,
   useCurrentTerms,
   useTermsVersions,
@@ -718,7 +721,10 @@ function SponsorsSection({ organizationId, challengeId }: { organizationId: stri
 
 function StaffSection({ organizationId, challengeId }: { organizationId: string; challengeId: string }) {
   const { data: staff = [] } = useAdminStaff(organizationId, challengeId);
+  const { data: invitations = [] } = useStaffInvitations(organizationId, challengeId);
   const inviteMutation = useInviteStaff(organizationId, challengeId);
+  const revokeMutation = useRevokeStaffInvitation(organizationId, challengeId);
+  const removeMutation = useRemoveStaff(organizationId, challengeId);
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<"JUDGE" | "MENTOR">("JUDGE");
 
@@ -735,11 +741,46 @@ function StaffSection({ organizationId, challengeId }: { organizationId: string;
           staff.map((s) => (
             <div key={s.id} className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between gap-3 text-xs">
               <span className="font-mono text-foreground">{s.userId}</span>
-              <Badge variant="outline" className="text-[10px]">{s.role}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">{s.role}</Badge>
+                {s.status === "ACTIVE" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-destructive"
+                    disabled={removeMutation.isPending}
+                    onClick={() => removeMutation.mutate(s.id, { onSuccess: () => toast.success("Staff member removed."), onError: (error: any) => toast.error(error?.message || "Failed to remove staff member.") })}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
             </div>
           ))
         )}
       </div>
+      {invitations.some((invitation) => invitation.status === "PENDING") && (
+        <div className="space-y-2 border-t border-border/60 pt-4">
+          <p className="text-[11px] font-bold uppercase text-muted-foreground">Pending invitations</p>
+          {invitations.filter((invitation) => invitation.status === "PENDING").map((invitation) => (
+            <div key={invitation.id} className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between gap-3 text-xs">
+              <span className="truncate">{invitation.email}</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">{invitation.role}</Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-destructive"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => revokeMutation.mutate(invitation.id, { onSuccess: () => toast.success("Invitation revoked."), onError: (error: any) => toast.error(error?.message || "Failed to revoke invitation.") })}
+                >
+                  Revoke
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex gap-2 pt-2">
         <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" type="email" className="text-xs h-9 flex-1" />
         <Select value={role} onValueChange={(v: any) => setRole(v)}>

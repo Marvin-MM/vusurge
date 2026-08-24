@@ -4,7 +4,7 @@ import { UserContext, User } from "@/types";
 
 const createMockUser = (overrides: Partial<User>): User => ({
   id: "u-default",
-  email: "default@devarena.io",
+  email: "default@vusurge.io",
   fullName: "Default User",
   username: "default_user",
   globalRole: "USER",
@@ -20,7 +20,7 @@ const createMockUser = (overrides: Partial<User>): User => ({
 
 describe("Permission Helpers & Role Security", () => {
   const superadminContext: UserContext = {
-    user: createMockUser({ id: "u-1", email: "admin@devarena.internal", fullName: "Marcus Vance", username: "marcus", globalRole: "PLATFORM_SUPERADMIN" }),
+    user: createMockUser({ id: "u-1", email: "admin@vusurge.internal", fullName: "Marcus Vance", username: "marcus", globalRole: "PLATFORM_SUPERADMIN" }),
     globalRole: "PLATFORM_SUPERADMIN",
   };
 

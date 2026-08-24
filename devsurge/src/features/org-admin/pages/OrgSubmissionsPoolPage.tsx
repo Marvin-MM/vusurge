@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { LoadMoreButton } from "@/components/shared/LoadMoreButton";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
-import { useAdminSubmissions, useDisqualifySubmission, useReinstateSubmission, usePromoteSubmissionToInnovation } from "@/features/org-admin/api/queries";
+import { useAdminSubmissions, useDisqualifySubmission, useReinstateSubmission, useReopenSubmission, usePromoteSubmissionToInnovation } from "@/features/org-admin/api/queries";
 import { useSubmission } from "@/features/submissions/api/queries";
 import { SubmissionStatusBadge } from "@/components/shared/StatusBadge";
 import { Submission } from "@/types";
@@ -18,7 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { can } from "@/types/permissions";
 import { toast } from "sonner";
 
-function SubmissionRow({ summary, onDisqualify, onPromote, canPromote }: { summary: Submission; onDisqualify: () => void; onPromote: () => void; canPromote: boolean }) {
+function SubmissionRow({ summary, onDisqualify, onReinstate, onReopen, onPromote, canPromote }: { summary: Submission; onDisqualify: () => void; onReinstate: () => void; onReopen: () => void; onPromote: () => void; canPromote: boolean }) {
   const { orgId = "", challengeId = "" } = useParams<{ orgId: string; challengeId: string }>();
   const { data: full } = useSubmission(orgId, challengeId, summary.id);
   const v = full?.draftVersion;
@@ -55,12 +55,21 @@ function SubmissionRow({ summary, onDisqualify, onPromote, canPromote }: { summa
             <span>Promote to Innovation</span>
           </Button>
         )}
+        {summary.status === "FINALIZED" && (
+          <Button variant="outline" size="sm" onClick={onReopen} className="text-xs h-8 gap-1">
+            <RotateCcw className="h-3.5 w-3.5" /> Reopen
+          </Button>
+        )}
         {summary.status !== "DISQUALIFIED" ? (
           <Button variant="outline" size="sm" onClick={onDisqualify} className="text-xs h-8 gap-1 text-destructive border-destructive/30 hover:bg-destructive/10">
             <Ban className="h-3.5 w-3.5" />
             <span>Disqualify</span>
           </Button>
-        ) : null}
+        ) : (
+          <Button variant="outline" size="sm" onClick={onReinstate} className="text-xs h-8 gap-1">
+            <RotateCcw className="h-3.5 w-3.5" /> Reinstate
+          </Button>
+        )}
       </div>
     </Card>
   );
@@ -72,10 +81,12 @@ export function OrgSubmissionsPoolPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("ALL");
   const { items: submissions, isLoading, hasMore, loadMore, isLoadingMore } = useAdminSubmissions(orgId, challengeId, statusFilter === "ALL" ? undefined : statusFilter);
   const disqualifyMutation = useDisqualifySubmission(orgId, challengeId);
+  const reinstateMutation = useReinstateSubmission(orgId, challengeId);
+  const reopenMutation = useReopenSubmission(orgId, challengeId);
   const promoteMutation = usePromoteSubmissionToInnovation(orgId, challengeId);
   const canPromote = can(userContext, "innovation.manage");
 
-  const [disqualifyTarget, setDisqualifyTarget] = React.useState<Submission | null>(null);
+  const [statusAction, setStatusAction] = React.useState<{ submission: Submission; action: "disqualify" | "reinstate" | "reopen" } | null>(null);
   const [reason, setReason] = React.useState("");
   const [promoteTarget, setPromoteTarget] = React.useState<Submission | null>(null);
 
@@ -110,7 +121,9 @@ export function OrgSubmissionsPoolPage() {
                 key={sub.id}
                 summary={sub}
                 canPromote={canPromote}
-                onDisqualify={() => { setDisqualifyTarget(sub); setReason(""); }}
+                onDisqualify={() => { setStatusAction({ submission: sub, action: "disqualify" }); setReason(""); }}
+                onReinstate={() => { setStatusAction({ submission: sub, action: "reinstate" }); setReason(""); }}
+                onReopen={() => { setStatusAction({ submission: sub, action: "reopen" }); setReason(""); }}
                 onPromote={() => setPromoteTarget(sub)}
               />
             ))
@@ -118,32 +131,33 @@ export function OrgSubmissionsPoolPage() {
         </div>
         <LoadMoreButton hasMore={hasMore} isLoadingMore={isLoadingMore} onClick={loadMore} />
 
-        <Dialog open={Boolean(disqualifyTarget)} onOpenChange={(open) => !open && setDisqualifyTarget(null)}>
+        <Dialog open={Boolean(statusAction)} onOpenChange={(open) => !open && setStatusAction(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold text-destructive">Disqualify Submission</DialogTitle>
-              <DialogDescription className="text-xs">Provide a reason for disqualifying this submission.</DialogDescription>
+              <DialogTitle className="text-base font-bold">{statusAction ? `${statusAction.action[0].toUpperCase()}${statusAction.action.slice(1)} Submission` : "Update Submission"}</DialogTitle>
+              <DialogDescription className="text-xs">Provide a reason of at least 10 characters. It will be recorded in the audit trail.</DialogDescription>
             </DialogHeader>
             <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason..." className="text-xs h-9" required />
             <DialogFooter className="pt-2">
-              <Button variant="ghost" size="sm" onClick={() => setDisqualifyTarget(null)} className="text-xs">Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => setStatusAction(null)} className="text-xs">Cancel</Button>
               <Button
                 variant="destructive"
                 size="sm"
-                disabled={disqualifyMutation.isPending}
+                disabled={!statusAction || reason.trim().length < 10 || disqualifyMutation.isPending || reinstateMutation.isPending || reopenMutation.isPending}
                 onClick={() => {
-                  if (!disqualifyTarget) return;
-                  disqualifyMutation.mutate(
-                    { submissionId: disqualifyTarget.id, reason },
+                  if (!statusAction) return;
+                  const mutation = statusAction.action === "disqualify" ? disqualifyMutation : statusAction.action === "reinstate" ? reinstateMutation : reopenMutation;
+                  mutation.mutate(
+                    { submissionId: statusAction.submission.id, reason: reason.trim() },
                     {
-                      onSuccess: () => { toast.success("Submission disqualified."); setDisqualifyTarget(null); },
-                      onError: (err: any) => toast.error(err?.message || "Failed to disqualify."),
+                      onSuccess: () => { toast.success("Submission status updated."); setStatusAction(null); },
+                      onError: (err: any) => toast.error(err?.message || "Failed to update submission."),
                     }
                   );
                 }}
                 className="text-xs font-semibold px-4"
               >
-                {disqualifyMutation.isPending ? "Disqualifying..." : "Confirm Disqualify"}
+                {disqualifyMutation.isPending || reinstateMutation.isPending || reopenMutation.isPending ? "Saving..." : "Confirm"}
               </Button>
             </DialogFooter>
           </DialogContent>

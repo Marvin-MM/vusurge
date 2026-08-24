@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import type { Client } from 'pg'
 import { createVerifiedUser } from '../helpers/auth-flow'
+import { flushOutbox } from '../helpers/outbox-flush'
 import { createPlatformSuperadmin } from '../helpers/platform-fixtures'
 import { createTestApp, type TestApp } from '../helpers/test-app'
 import { connectMigrationSql, resetDatabase, seedTechnologyTags } from '../helpers/test-database'
@@ -359,5 +360,97 @@ describe('submissions', () => {
       { cookies: outsider.cookie },
     )
     expect(outsiderView.status).toBe(403)
+  })
+
+  /**
+   * An organization MEMBER holds `submission.create`/`edit_own`/`submit` by
+   * role (roles.ts's MEMBER_PERMISSIONS) — exactly the same grants an APPROVED
+   * participant receives via CHALLENGE_PARTICIPANT_PERMISSIONS. Permission
+   * checks alone therefore cannot distinguish "a member of the host org who
+   * never registered" from "a registered participant", so the participation
+   * record itself has to be the gate. Without it, any member of the hosting
+   * organization could open a submission on a challenge they never entered.
+   */
+  test('an org member who never registered cannot start a submission', async () => {
+    const { owner, organizationId, challengeId } = await setupOpenChallenge()
+
+    const member = await createVerifiedUser(app)
+    await app.request('POST', `/api/v1/organizations/${organizationId}/invitations`, {
+      body: { email: member.email, role: 'MEMBER' },
+      headers: { 'idempotency-key': crypto.randomUUID() },
+      cookies: owner.cookie,
+    })
+    await flushOutbox(app.infrastructure)
+    const sent = app.infrastructure.fakeEmail.latestTo(member.email)
+    const token = new URL(
+      app.infrastructure.fakeEmail.extractUrl(sent as NonNullable<typeof sent>),
+    ).pathname
+      .split('/')
+      .at(-2)
+    const accepted = await app.request('POST', `/api/v1/invitations/${token}/accept`, {
+      cookies: member.cookie,
+    })
+    expect(accepted.status).toBe(200)
+
+    // The member is a real, active member of the host org but has no
+    // participation record for this challenge.
+    const participation = await app.request(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/me`,
+      { cookies: member.cookie },
+    )
+    expect(participation.status).toBe(200)
+    expect(participation.body).toBeFalsy()
+
+    const denied = await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/submissions`,
+      { cookies: member.cookie },
+    )
+    expect(denied.status).toBe(403)
+
+    // No stray implicit solo team was created as a side effect of the attempt.
+    const teams = await app.request<{ id: string }[]>(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/teams`,
+      { cookies: owner.cookie },
+    )
+    expect(teams.body).toHaveLength(0)
+
+    // Registering first makes the very same call succeed — proving the gate is
+    // the participation record, not some unrelated denial.
+    await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/register`,
+      { body: {}, cookies: member.cookie },
+    )
+    const allowed = await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/submissions`,
+      { cookies: member.cookie },
+    )
+    expect(allowed.status).toBe(201)
+  })
+
+  /**
+   * The withdrawn/rejected/disqualified case: a participation row exists but is
+   * not APPROVED, so it must not confer submission access either.
+   */
+  test('a withdrawn participant cannot start a submission', async () => {
+    const { organizationId, challengeId } = await setupOpenChallenge()
+    const participant = await approvedParticipant(organizationId, challengeId)
+
+    await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/participation/withdraw`,
+      { cookies: participant.cookie },
+    )
+
+    const denied = await app.request(
+      'POST',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/submissions`,
+      { cookies: participant.cookie },
+    )
+    expect(denied.status).toBe(403)
   })
 })

@@ -12,6 +12,9 @@ import {
   LifeBuoy,
   Activity,
   Menu,
+  UserRound,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +29,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { useUiStore } from "@/stores/useUiStore";
+import { can } from "@/types/permissions";
 import { cn } from "@/lib/utils";
 
 export function PlatformAdminShell() {
@@ -35,21 +39,28 @@ export function PlatformAdminShell() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   // Any platform role (SUPERADMIN or SUPPORT_AGENT) may enter the shell —
-  // PLATFORM_SUPPORT_AGENT holds only `platform.support`+`platform.moderate`
-  // (a strict subset of superadmin's permissions), so the finer-grained
-  // access control lives per-page via `PlatformAccessGuard`, not here.
+  // PLATFORM_SUPPORT_AGENT holds only `platform.support`+`platform.moderate`,
+  // a strict subset of superadmin's permissions.
   const hasAnyPlatformRole =
     userContext.globalRole === "PLATFORM_SUPERADMIN" || userContext.globalRole === "PLATFORM_SUPPORT_AGENT";
 
+  // Each destination declares the permission that actually admits the viewer,
+  // so a support agent is not shown entries whose pages (and whose backend
+  // routes) will refuse them. Entries without a permission are reachable by
+  // any platform role: the overview is a summary of whatever the viewer can
+  // already see, while the health page hits the unauthenticated readiness probe.
   const adminNavItems = [
     { to: "/admin", label: "Global Overview", icon: LayoutDashboard, end: true },
-    { to: "/admin/organizations", label: "Org Vetting & Tenants", icon: Building2 },
-    { to: "/admin/moderation", label: "Content Moderation", icon: ShieldAlert },
-    { to: "/admin/support", label: "Support & Operations", icon: LifeBuoy },
-    { to: "/admin/challenges", label: "Global Challenges", icon: Trophy },
+    { to: "/admin/organizations", label: "Org Vetting & Tenants", icon: Building2, permission: "platform.manage_organizations" as const },
+    { to: "/admin/moderation", label: "Content Moderation", icon: ShieldAlert, permission: "platform.moderate" as const },
+    { to: "/admin/support", label: "Support & Operations", icon: LifeBuoy, permission: "platform.support" as const },
+    { to: "/admin/challenges", label: "Global Challenges", icon: Trophy, permission: "platform.manage_organizations" as const },
+    { to: "/admin/users", label: "Platform Users", icon: UserRound, permission: "platform.manage_roles" as const },
+    { to: "/admin/analytics", label: "Platform Analytics", icon: BarChart3, permission: "platform.manage_organizations" as const },
+    { to: "/admin/platform-settings", label: "Platform Settings", icon: Settings, permission: "platform.manage_feature_flags" as const },
     { to: "/admin/health", label: "Infrastructure Telemetry", icon: Activity },
-    { to: "/admin/audit-logs", label: "Global Audit Trail", icon: History },
-  ];
+    { to: "/admin/audit-logs", label: "Global Audit Trail", icon: History, permission: "platform.view_audit" as const },
+  ].filter((item) => !item.permission || can(userContext, item.permission));
 
   if (!hasAnyPlatformRole) {
     return (
@@ -83,13 +94,8 @@ export function PlatformAdminShell() {
         <div className="h-16 border-b border-slate-800 px-3 flex items-center justify-between gap-2">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 shrink-0 font-black">
-                <Shield className="h-5 w-5" />
-              </div>
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8" />
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-xs tracking-tight truncate text-white">
-                  DevArena
-                </span>
                 <span className="text-[10px] text-amber-400 uppercase font-semibold tracking-wider">
                   Platform Admin
                 </span>
@@ -117,10 +123,11 @@ export function PlatformAdminShell() {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer group",
+                    "flex items-center justify-between py-2 rounded-md text-xs font-medium transition-colors cursor-pointer group",
                     isActive
                       ? "bg-amber-500 text-slate-950 font-bold shadow-xs"
-                      : "text-slate-300 hover:text-white hover:bg-slate-900"
+                      : "text-slate-300 hover:text-white hover:bg-slate-900",
+                    sidebarCollapsed ? "justify-center px-0" : "px-3"
                   )
                 }
                 title={sidebarCollapsed ? item.label : undefined}
@@ -170,11 +177,8 @@ export function PlatformAdminShell() {
               <SheetContent side="left" className="w-72 p-0 flex flex-col bg-slate-950 text-slate-100 border-slate-800">
                 <SheetHeader className="text-left px-4 pt-4 pb-3 border-b border-slate-800">
                   <SheetTitle className="flex items-center gap-2 text-white">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 shrink-0 font-black">
-                      <Shield className="h-5 w-5" />
-                    </div>
+                    <img src="/surgeLogo.png" alt="VUSurge" className="h-6" />
                     <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-xs tracking-tight">DevArena</span>
                       <span className="text-[10px] text-amber-400 uppercase font-semibold tracking-wider">Platform Admin</span>
                     </div>
                   </SheetTitle>

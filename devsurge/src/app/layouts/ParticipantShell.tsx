@@ -6,6 +6,7 @@ import {
   Users,
   Send,
   Bell,
+  Search,
   Building2,
   Inbox,
   User as UserIcon,
@@ -30,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SearchDialog } from "@/components/shared/SearchDialog";
 import { OrganizationSwitcher } from "@/components/shared/OrganizationSwitcher";
 import { useAuth } from "@/context/AuthContext";
 import { useUnreadNotificationCount } from "@/features/notifications/api/queries";
@@ -80,6 +82,18 @@ export function ParticipantShell() {
   const { data: unreadData } = useUnreadNotificationCount();
   const unreadCount = unreadData?.count ?? 0;
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // share one nav-bar slot each (click dropdown) rather than crowding the
   // bar with separate top-level links; Teams & Matchmaking is grouped under
@@ -104,8 +118,8 @@ export function ParticipantShell() {
     { to: "/app", label: "Dashboard", icon: Compass, end: true },
     ...challengesGroup,
     ...submissionsGroup,
-    { to: "/app/support", label: "Support Desk", icon: HelpCircle },
-    { to: "/app/inbox", label: "Inbox", icon: Inbox, badge: unreadCount > 0 ? unreadCount : undefined },
+    { to: "/app/inbox", label: "Inbox & Support", icon: Inbox, badge: unreadCount > 0 ? unreadCount : undefined },
+    { to: "/app/profile", label: "Profile & Account", icon: UserIcon },
   ];
 
   return (
@@ -116,12 +130,7 @@ export function ParticipantShell() {
           <div className="flex items-center gap-6">
             {/* Logo */}
             <Link to="/app" className="flex items-center gap-2 group">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-xs group-hover:scale-105 transition-transform">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <span className="font-bold text-base tracking-tight text-foreground hidden sm:inline">
-                DevArena
-              </span>
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8 group-hover:scale-105 transition-transform" />
             </Link>
 
             {/* Desktop Nav Links */}
@@ -163,8 +172,24 @@ export function ParticipantShell() {
           </div>
 
           {/* Right Area: Org Switcher, Notifications, User Menu */}
-          <div className="flex items-center gap-3">
-            <OrganizationSwitcher />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* The switcher renders a full organization name, which alone is
+                wider than a phone's remaining header space — it moves into
+                the mobile sheet below rather than overflowing the bar. */}
+            <div className="hidden sm:block">
+              <OrganizationSwitcher />
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setSearchOpen(true)}
+              title="Search (Ctrl+K)"
+            >
+              <Search className="h-4 w-4" />
+              <span className="sr-only">Search</span>
+            </Button>
 
             {/* Notification Bell */}
             <Button
@@ -255,13 +280,13 @@ export function ParticipantShell() {
                     </span>
                   )}
                 </DropdownMenuItem>
+                {/* Inbox/Support Desk and Profile/Settings are each one
+                    grouped page with in-page tabs now (see
+                    src/app/layouts/sections.tsx) — these link to the group's
+                    first tab, and the sibling is a tab away. */}
                 <DropdownMenuItem onClick={() => navigate("/app/profile")} className="text-xs cursor-pointer gap-2">
                   <UserIcon className="h-3.5 w-3.5" />
-                  <span>My Profile & Skills</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/app/settings")} className="text-xs cursor-pointer gap-2">
-                  <Settings className="h-3.5 w-3.5" />
-                  <span>Account Settings</span>
+                  <span>Profile & Account</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/app/support")} className="text-xs cursor-pointer gap-2">
                   <HelpCircle className="h-3.5 w-3.5" />
@@ -293,10 +318,15 @@ export function ParticipantShell() {
                 <SheetContent side="left" className="w-72">
                   <SheetHeader className="text-left pb-4 border-b border-border">
                     <SheetTitle className="flex items-center gap-2 text-base">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <span>DevArena Participant</span>
+                      <img src="/surgeLogo.png" alt="VUSurge" className="h-6" />
+                      <span className="text-muted-foreground text-sm">Participant</span>
                     </SheetTitle>
                   </SheetHeader>
+                  {/* Carries the organization switcher that the header hides
+                      below the sm breakpoint. */}
+                  <div className="pt-4 sm:hidden">
+                    <OrganizationSwitcher className="w-full justify-between" />
+                  </div>
                   <div className="flex flex-col gap-1.5 py-4">
                     {mobileNavItems.map((item) => {
                       const Icon = item.icon;
@@ -340,6 +370,7 @@ export function ParticipantShell() {
         <Outlet />
       </main>
 
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

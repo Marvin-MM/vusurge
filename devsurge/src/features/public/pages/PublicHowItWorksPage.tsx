@@ -57,7 +57,7 @@ export function PublicHowItWorksPage() {
           <span>The Challenge Lifecycle</span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight">
-          How DevArena Works
+          How VUSurge Works
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           A step-by-step walkthrough of how a challenge runs, from registration to published results.

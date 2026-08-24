@@ -48,7 +48,7 @@ export const useUiStore = create<UiState>()(
       setNotificationDrawerOpen: (open) => set({ notificationDrawerOpen: open }),
     }),
     {
-      name: "devarena-ui-preferences",
+      name: "vusurge-ui-preferences",
       partialize: (state) => ({
         activeWorkspace: state.activeWorkspace,
         activeOrganizationId: state.activeOrganizationId,

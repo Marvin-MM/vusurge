@@ -73,7 +73,12 @@ async function bootRealServer(wireServer: boolean): Promise<RealServerHarness> {
   async function request<T = unknown>(
     method: string,
     path: string,
-    options: { body?: unknown; headers?: Record<string, string>; cookies?: string; csrf?: boolean } = {},
+    options: {
+      body?: unknown
+      headers?: Record<string, string>
+      cookies?: string
+      csrf?: boolean
+    } = {},
   ): Promise<TestClientResponse<T>> {
     const headers = new Headers(options.headers)
     if (options.body !== undefined && !headers.has('content-type')) {

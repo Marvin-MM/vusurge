@@ -21,6 +21,17 @@ export interface ParticipationRow {
   createdAt: Date
 }
 
+/**
+ * The organizer-facing roster row: a participation plus the applicant's
+ * identity, which the organizer needs in order to review the application at
+ * all. Kept separate from ParticipationRow so the self-facing and mutation
+ * paths keep their narrower shape.
+ */
+export interface ParticipationListRow extends ParticipationRow {
+  displayName: string | null
+  email: string
+}
+
 export interface RegisterInput {
   id: string
   organizationId: string
@@ -85,7 +96,7 @@ export interface ParticipationRepository {
     challengeId: string,
     status: ParticipationStatus | undefined,
     page: PageRequest,
-  ): Promise<Page<ParticipationRow>>
+  ): Promise<Page<ParticipationListRow>>
   countByStatus(
     client: PrismaTransactionClient,
     organizationId: string,
@@ -200,7 +211,35 @@ export function createParticipationRepository(): ParticipationRepository {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: page.limit + 1,
       })
-      return buildPage(rows, page, (row) => ({ at: row.createdAt.toISOString(), id: row.id }))
+
+      // Resolve applicant identity here rather than leaving the client to call
+      // `/users/:id/profile` per row: that endpoint answers 404 for anyone the
+      // caller does not share an organization with, and a challenge
+      // participant frequently is not an org member (an OPEN_AUTHENTICATED
+      // challenge is open to anyone), so an organizer screening applications
+      // could not see who they were reviewing. This route already requires
+      // challenge.manage_participants. ChallengeParticipation has no `user`
+      // relation to include through, so this is a second keyed read; `user`
+      // and `user_profile` carry no row-level security, so they resolve
+      // correctly inside the tenant transaction.
+      const users = await client.user.findMany({
+        where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
+        select: { id: true, email: true, profile: { select: { displayName: true } } },
+      })
+      const byId = new Map(users.map((user) => [user.id, user]))
+
+      return buildPage(
+        rows.map((row) => {
+          const user = byId.get(row.userId)
+          return {
+            ...row,
+            displayName: user?.profile?.displayName ?? null,
+            email: user?.email ?? '',
+          }
+        }),
+        page,
+        (row) => ({ at: row.createdAt.toISOString(), id: row.id }),
+      )
     },
 
     async countByStatus(client, organizationId, challengeId, status) {

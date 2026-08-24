@@ -70,7 +70,21 @@ export const ParticipationOrganizerResponse = t.Composite([
   }),
 ])
 
-export const ParticipationListResponse = PageOf(ParticipationOrganizerResponse)
+/**
+ * The roster projection adds the applicant's identity, which an organizer
+ * needs in order to review an application. Only on the list route, which is
+ * gated on challenge.manage_participants — the single-record organizer
+ * responses keep the narrower shape.
+ */
+export const ParticipationRosterResponse = t.Composite([
+  ParticipationOrganizerResponse,
+  t.Object({
+    displayName: t.Union([t.String(), t.Null()]),
+    email: t.String(),
+  }),
+])
+
+export const ParticipationListResponse = PageOf(ParticipationRosterResponse)
 export const ParticipationListQuery = t.Composite([
   PaginationQuery,
   t.Object({ status: t.Optional(ParticipationStatus) }),

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { REQUIREMENT_COVERAGE_GROUPS } from '../src/release/requirement-catalog'
 import { ALL_DOMAIN_EVENT_TYPES, DOMAIN_EVENT_CATALOG } from '../src/shared/outbox'
 import { ALL_QUEUE_NAMES } from '../src/shared/queue'
@@ -8,7 +8,25 @@ import { ALL_SCHEDULED_JOB_NAMES, SCHEDULED_JOB_CATALOG } from '../src/workers/s
 
 const root = join(import.meta.dir, '..')
 const workspace = join(root, '..')
-const promptPath = join(workspace, 'innovation_backend_master_prompt.md')
+const configuredPromptPath = process.env['REQUIREMENTS_PROMPT_PATH']
+const promptCandidates = [
+  ...(configuredPromptPath
+    ? [
+        isAbsolute(configuredPromptPath)
+          ? configuredPromptPath
+          : resolve(workspace, configuredPromptPath),
+      ]
+    : []),
+  join(workspace, 'innovation_backend_master_prompt.md'),
+  join(workspace, 'innovation_backend.md'),
+]
+const promptPath = promptCandidates.find(existsSync)
+if (promptPath === undefined) {
+  throw new Error(
+    `Requirements prompt not found. Checked: ${promptCandidates.join(', ')}. ` +
+      'Set REQUIREMENTS_PROMPT_PATH when the source document has a different name.',
+  )
+}
 const generatedDirectory = join(root, 'docs', 'generated')
 const matrixPath = join(generatedDirectory, 'requirement-matrix.md')
 const reportPath = join(root, 'docs', 'IMPLEMENTATION_REPORT.md')

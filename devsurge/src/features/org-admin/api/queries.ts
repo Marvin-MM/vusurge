@@ -505,7 +505,18 @@ export function useCurrentTerms(organizationId: string, challengeId: string) {
 // =============================================================================
 
 export function useAdminParticipants(organizationId: string, challengeId: string, status?: string) {
-  return useCursorList<ParticipationRecord & { userId: string; decidedByUserId: string | null; internalNotes: string | null }>(
+  // The roster projection carries the applicant's identity (resolved
+  // server-side) — `/users/:id/profile` 404s for anyone the caller does not
+  // share an organization with, which most challenge applicants are not.
+  return useCursorList<
+    ParticipationRecord & {
+      userId: string;
+      decidedByUserId: string | null;
+      internalNotes: string | null;
+      displayName: string | null;
+      email: string;
+    }
+  >(
     ["organizations", organizationId, "challenges", challengeId, "participants", { status }],
     `${challengeBase(organizationId, challengeId)}/participants`,
     { status }
@@ -555,8 +566,17 @@ export function useAdminSubmissions(organizationId: string, challengeId: string,
 export function useDisqualifySubmission(organizationId: string, challengeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ submissionId, reason }: { submissionId: string; reason?: string }) =>
+    mutationFn: ({ submissionId, reason }: { submissionId: string; reason: string }) =>
       apiPost(`${challengeBase(organizationId, challengeId)}/submissions/${submissionId}/disqualify`, { reason }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"] }),
+  });
+}
+
+export function useReopenSubmission(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ submissionId, reason }: { submissionId: string; reason: string }) =>
+      apiPost(`${challengeBase(organizationId, challengeId)}/submissions/${submissionId}/reopen`, { reason }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"] }),
   });
 }
@@ -564,7 +584,8 @@ export function useDisqualifySubmission(organizationId: string, challengeId: str
 export function useReinstateSubmission(organizationId: string, challengeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (submissionId: string) => apiPost(`${challengeBase(organizationId, challengeId)}/submissions/${submissionId}/reinstate`),
+    mutationFn: ({ submissionId, reason }: { submissionId: string; reason: string }) =>
+      apiPost(`${challengeBase(organizationId, challengeId)}/submissions/${submissionId}/reinstate`, { reason }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"] }),
   });
 }
@@ -665,6 +686,44 @@ export function useStaffInvitations(organizationId: string, challengeId: string)
   });
 }
 
+export function useRevokeStaffInvitation(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: string) =>
+      apiPost(`${challengeBase(organizationId, challengeId)}/staff-invitations/${invitationId}/revoke`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "staff-invitations"] }),
+  });
+}
+
+export function useReassignJudgeAssignment(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assignmentId, newStaffAssignmentId, reason }: { assignmentId: string; newStaffAssignmentId: string; reason: string }) =>
+      apiPost<JudgeAssignment>(`${challengeBase(organizationId, challengeId)}/judge-assignments/${assignmentId}/reassign`, { newStaffAssignmentId, reason }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "judge-assignments"] }),
+  });
+}
+
+export function useDeleteJudgeAssignment(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) => apiDelete(`${challengeBase(organizationId, challengeId)}/judge-assignments/${assignmentId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "judge-assignments"] }),
+  });
+}
+
+export function useReopenScorecard(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ scorecardId, reason }: { scorecardId: string; reason: string }) =>
+      apiPost(`${challengeBase(organizationId, challengeId)}/scorecards/${scorecardId}/reopen`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "judge-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "judging", "progress"] });
+    },
+  });
+}
+
 export function useRemoveStaff(organizationId: string, challengeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -714,6 +773,17 @@ export function useFinalizeJudging(organizationId: string, challengeId: string) 
   });
 }
 
+export function useReleaseFeedback(organizationId: string, challengeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost(`${challengeBase(organizationId, challengeId)}/feedback/release`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId] });
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"] });
+    },
+  });
+}
+
 // =============================================================================
 // Results
 // =============================================================================
@@ -731,7 +801,10 @@ export function useFinalizeResults(organizationId: string, challengeId: string) 
   return useMutation({
     mutationFn: (selections: { submissionId: string; trackId?: string; selectionType: string; rankLabel?: string; rank?: number }[]) =>
       apiPost<Result[]>(`${challengeBase(organizationId, challengeId)}/results/finalize`, { selections }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "results"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "results"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId] });
+    },
   });
 }
 
@@ -752,8 +825,11 @@ export function usePublishResults(organizationId: string, challengeId: string) {
 export function useRetractResults(organizationId: string, challengeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => apiPost(`${challengeBase(organizationId, challengeId)}/results/retract`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "results"] }),
+    mutationFn: (reason: string) => apiPost(`${challengeBase(organizationId, challengeId)}/results/retract`, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "results"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId] });
+    },
   });
 }
 

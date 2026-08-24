@@ -128,38 +128,3 @@ export function useRequestPrivateFileDownload() {
 export function useDeletePrivateFile() {
   return useMutation({ mutationFn: (fileId: string) => apiDelete<void>(`/files/${fileId}`) });
 }
-
-// --- Client-side reference persistence -------------------------------------
-// Some purposes have no backend field to record which private file a parent
-// record is currently pointing at (e.g. a submission's presentation file —
-// see the schema note in SubmissionEditorPage.tsx). For those, we persist a
-// lightweight, best-effort local reference so the upload survives a page
-// reload in the same browser. Purposes whose target already has a place to
-// store a durable reference (e.g. a support-ticket comment's markdown body)
-// don't need this and should prefer the real backend record instead.
-
-const STORAGE_PREFIX = "devsurge:private-file-ref:";
-
-export interface StoredFileRef {
-  fileId: string;
-  displayName: string;
-}
-
-export function readStoredFileRef(key: string): StoredFileRef | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + key);
-    return raw ? (JSON.parse(raw) as StoredFileRef) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeStoredFileRef(key: string, ref: StoredFileRef | null): void {
-  try {
-    if (ref === null) localStorage.removeItem(STORAGE_PREFIX + key);
-    else localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(ref));
-  } catch {
-    // Best-effort only (private browsing / storage quota) — the upload
-    // still succeeded server-side even if we can't remember it locally.
-  }
-}

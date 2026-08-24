@@ -64,6 +64,18 @@ export const SubmissionScreenshotResponse = t.Object({
   mediaAssetId: Uuid,
 })
 
+export const SubmissionPresentationFileResponse = t.Object({
+  fileAssetId: Uuid,
+  displayName: t.String(),
+  scanStatus: t.Union([
+    t.Literal('PENDING_UPLOAD'),
+    t.Literal('QUARANTINED'),
+    t.Literal('CLEAN'),
+    t.Literal('INFECTED'),
+    t.Literal('FAILED'),
+  ]),
+})
+
 export const SubmissionResponse = t.Object({
   id: Uuid,
   challengeId: Uuid,
@@ -72,6 +84,7 @@ export const SubmissionResponse = t.Object({
   status: SubmissionStatus,
   draftVersion: t.Union([SubmissionVersionResponse, t.Null()]),
   screenshots: t.Array(SubmissionScreenshotResponse),
+  presentationFiles: t.Array(SubmissionPresentationFileResponse),
   disqualificationReason: t.Union([t.String(), t.Null()]),
   createdAt: t.String(),
 })

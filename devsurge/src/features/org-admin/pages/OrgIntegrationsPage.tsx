@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/shared/PageContainer";
 import { OrgAccessGuard } from "@/features/org-admin/components/OrgAccessGuard";
+import { useCapabilities } from "@/lib/capabilities";
 import { useOrgIntegrations, useCreateSlackIntegration, useCreateDiscordIntegration, useDeleteIntegration, useTestIntegration } from "@/features/org-admin/api/queries";
 import { useAuth } from "@/context/AuthContext";
 import { can } from "@/types/permissions";
@@ -22,6 +23,13 @@ export function OrgIntegrationsPage() {
   const createDiscordMutation = useCreateDiscordIntegration(orgId);
   const deleteMutation = useDeleteIntegration(orgId);
   const testMutation = useTestIntegration(orgId);
+
+  // The backend rejects a connect attempt outright when the provider is not
+  // enabled in this deployment (503 FEATURE_DISABLED). Read the real
+  // capability list rather than offering a control that cannot succeed.
+  const { data: capabilities } = useCapabilities();
+  const slackEnabled = capabilities?.slackIntegration ?? false;
+  const discordEnabled = capabilities?.discordIntegration ?? false;
 
   const [slackUrl, setSlackUrl] = React.useState("");
   const [discordUrl, setDiscordUrl] = React.useState("");
@@ -71,10 +79,17 @@ export function OrgIntegrationsPage() {
               <Slack className="h-4 w-4 text-primary" />
               Slack Webhook
             </div>
-            <Input value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/..." className="text-xs h-9 font-mono" />
+            {!slackEnabled && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Slack delivery is not enabled in this deployment. Set
+                <code className="mx-1 px-1 py-0.5 rounded bg-muted font-mono">FEATURE_SLACK_INTEGRATION=true</code>
+                and restart the API to enable it.
+              </p>
+            )}
+            <Input value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/..." className="text-xs h-9 font-mono" disabled={!slackEnabled} />
             <Button
               size="sm"
-              disabled={!slackUrl.trim() || createSlackMutation.isPending}
+              disabled={!slackEnabled || !slackUrl.trim() || createSlackMutation.isPending}
               onClick={() => createSlackMutation.mutate(slackUrl, { onSuccess: () => { setSlackUrl(""); toast.success("Slack connected."); }, onError: (err: any) => toast.error(err?.message || "Failed to connect.") })}
               className="text-xs font-semibold gap-1.5 w-full"
             >
@@ -87,10 +102,17 @@ export function OrgIntegrationsPage() {
               <MessageSquare className="h-4 w-4 text-primary" />
               Discord Webhook
             </div>
-            <Input value={discordUrl} onChange={(e) => setDiscordUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." className="text-xs h-9 font-mono" />
+            {!discordEnabled && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Discord delivery is not enabled in this deployment. Set
+                <code className="mx-1 px-1 py-0.5 rounded bg-muted font-mono">FEATURE_DISCORD_INTEGRATION=true</code>
+                and restart the API to enable it.
+              </p>
+            )}
+            <Input value={discordUrl} onChange={(e) => setDiscordUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." className="text-xs h-9 font-mono" disabled={!discordEnabled} />
             <Button
               size="sm"
-              disabled={!discordUrl.trim() || createDiscordMutation.isPending}
+              disabled={!discordEnabled || !discordUrl.trim() || createDiscordMutation.isPending}
               onClick={() => createDiscordMutation.mutate(discordUrl, { onSuccess: () => { setDiscordUrl(""); toast.success("Discord connected."); }, onError: (err: any) => toast.error(err?.message || "Failed to connect.") })}
               className="text-xs font-semibold gap-1.5 w-full"
             >

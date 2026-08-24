@@ -36,6 +36,7 @@ import { getDisplayStatus } from "@/lib/challengeStatus";
 import { PageContainer } from "@/components/shared/PageContainer";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
+import { ReportContentDialog } from "@/components/shared/ReportContentDialog";
 import { toast } from "sonner";
 
 export function ChallengeDetailPage() {
@@ -107,6 +108,15 @@ export function ChallengeDetailPage() {
             <Share2 className="h-3.5 w-3.5" />
             <span>Share</span>
           </Button>
+
+          {challenge.visibility === "PUBLIC" && (
+            <ReportContentDialog
+              targetType="CHALLENGE"
+              targetId={challenge.id}
+              targetLabel="this challenge"
+              triggerClassName="h-8"
+            />
+          )}
 
           {participation?.status === "APPROVED" && (
             <Button

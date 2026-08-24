@@ -251,6 +251,35 @@ describe('private files', () => {
     const storedBytes = new Uint8Array(await (await fetch(download.body.downloadUrl)).arrayBuffer())
     expect(storedBytes).toEqual(pdf)
 
+    const detail = await app.request<{
+      presentationFiles: Array<{ fileAssetId: string; displayName: string; scanStatus: string }>
+    }>(
+      'GET',
+      `/api/v1/organizations/${fixture.organizationId}/challenges/${fixture.challengeId}/submissions/${fixture.submissionId}`,
+      { cookies: fixture.participant.cookie },
+    )
+    expect(detail.body.presentationFiles).toEqual([
+      { fileAssetId: fileId, displayName: 'presentation.pdf', scanStatus: 'CLEAN' },
+    ])
+
+    // Draft saves create immutable versions. The durable presentation link
+    // must follow the new draft rather than disappearing from the response.
+    const savedAgain = await app.request<{
+      draftVersion: { id: string }
+      presentationFiles: Array<{ fileAssetId: string; displayName: string; scanStatus: string }>
+    }>(
+      'PATCH',
+      `/api/v1/organizations/${fixture.organizationId}/challenges/${fixture.challengeId}/submissions/${fixture.submissionId}/draft`,
+      {
+        body: { tagline: 'Saved after the presentation upload.' },
+        cookies: fixture.participant.cookie,
+      },
+    )
+    expect(savedAgain.body.draftVersion.id).not.toBe(fixture.versionId)
+    expect(savedAgain.body.presentationFiles).toEqual([
+      { fileAssetId: fileId, displayName: 'presentation.pdf', scanStatus: 'CLEAN' },
+    ])
+
     const outsider = await createVerifiedUser(app)
     await app.request(
       'POST',
@@ -380,11 +409,20 @@ describe('private files', () => {
     const definition = await app.request<{ id: string }>(
       'POST',
       `/api/v1/organizations/${organizationId}/forms`,
-      { body: { purpose: 'MENTOR_JUDGE_APPLICATION', name: 'Mentor Application' }, cookies: owner.cookie },
+      {
+        body: { purpose: 'MENTOR_JUDGE_APPLICATION', name: 'Mentor Application' },
+        cookies: owner.cookie,
+      },
     )
     const schema = {
       fields: [
-        { key: 'resume', type: 'FILE_REF', label: 'Resume', required: true, uploadPurpose: 'FORM_ATTACHMENT' },
+        {
+          key: 'resume',
+          type: 'FILE_REF',
+          label: 'Resume',
+          required: true,
+          uploadPurpose: 'FORM_ATTACHMENT',
+        },
       ],
     }
     const version = await app.request<{ id: string }>(
@@ -430,7 +468,9 @@ describe('private files', () => {
       },
     )
     if (memberAuth.status !== 200) {
-      throw new Error(`Upload authorization failed (${memberAuth.status}): ${JSON.stringify(memberAuth.body)}`)
+      throw new Error(
+        `Upload authorization failed (${memberAuth.status}): ${JSON.stringify(memberAuth.body)}`,
+      )
     }
     expect(memberAuth.status).toBe(200)
 

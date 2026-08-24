@@ -97,6 +97,8 @@ export const JudgeAssignmentResponse = t.Object({
   staffAssignmentId: Uuid,
   submissionId: Uuid,
   status: JudgeAssignmentStatus,
+  scorecardId: t.Union([Uuid, t.Null()]),
+  scorecardStatus: t.Union([ScorecardStatus, t.Null()]),
   createdAt: t.String(),
 })
 export const JudgeAssignmentListResponse = t.Array(JudgeAssignmentResponse)

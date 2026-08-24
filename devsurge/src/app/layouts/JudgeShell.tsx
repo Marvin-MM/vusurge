@@ -21,13 +21,8 @@ export function JudgeShell() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-6">
             <Link to="/judge" className="flex items-center gap-2 group">
-              <div className="h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-                <Gavel className="h-4 w-4" />
-              </div>
+              <img src="/surgeLogo.png" alt="VUSurge" className="h-8" />
               <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-foreground">
-                  DevArena Judge Suite
-                </span>
                 <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase tracking-widest leading-none">
                   Evaluation Workspace
                 </span>

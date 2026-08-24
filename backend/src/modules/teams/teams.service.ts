@@ -892,6 +892,19 @@ export function createTeamsService(
       return transactions.withTenant(
         organizationId,
         async (tx) => {
+          // Registering for the challenge is the gate on submitting to it.
+          // Permission checks alone cannot enforce this: an organization
+          // MEMBER already holds submission.create/edit_own/submit by role
+          // (roles.ts's MEMBER_PERMISSIONS), identical to what an APPROVED
+          // participant is granted, so without this every member of the host
+          // org could open a submission on a challenge they never entered —
+          // and the implicit-solo-team branch below would silently create
+          // their team as a side effect. This also correctly denies a
+          // participant whose record is no longer APPROVED (withdrawn,
+          // rejected, or disqualified), including one who had already joined
+          // a team before that happened.
+          await requireApprovedParticipant(tx, organizationId, challengeId, actor.userId)
+
           const existing = await repository.findMemberByChallengeAndUser(
             tx,
             organizationId,

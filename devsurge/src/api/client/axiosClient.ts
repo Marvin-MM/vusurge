@@ -70,6 +70,30 @@ apiClient.interceptors.response.use(undefined, async (error) => {
     sessionExpiredHandler?.();
   }
 
+  // Sensitive operations (connecting an integration, transferring ownership,
+  // and similar) require a session authenticated within the last 15 minutes.
+  // The backend answers a bare 403 whose `detail` does not tell the reader
+  // that re-authenticating is the remedy, so give this its own message —
+  // otherwise it is indistinguishable from an ordinary permission denial.
+  if (status === 403 && data?.code === "FRESH_SESSION_REQUIRED") {
+    return Promise.reject({
+      status,
+      code: data.code,
+      message:
+        "For security, this action needs a recently authenticated session. Please sign in again, then retry.",
+      data: error.response?.data,
+    });
+  }
+
+  if (status === 503 && data?.code === "FEATURE_DISABLED") {
+    return Promise.reject({
+      status,
+      code: data.code,
+      message: data.detail || "This capability is not enabled in this deployment.",
+      data: error.response?.data,
+    });
+  }
+
   // Real API errors are RFC 9457 problem documents (`detail`).
   const message = data?.detail || data?.message || error.message || "An unexpected error occurred.";
 

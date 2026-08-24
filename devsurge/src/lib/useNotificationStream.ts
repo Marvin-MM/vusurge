@@ -21,16 +21,64 @@ export function useNotificationStream(enabled: boolean) {
   React.useEffect(() => {
     if (!enabled || !capabilities?.sseNotifications) return;
 
-    const source = new EventSource(`${API_BASE_URL}/me/notifications/stream`, { withCredentials: true });
+    let source: EventSource | null = null;
+    let reconnectTimer: number | undefined;
+    let disposed = false;
+    let failedConnections = 0;
+    let openedAt = 0;
 
-    source.addEventListener("notification", () => {
-      queryClient.invalidateQueries({ queryKey: ["me", "notifications"] });
-    });
+    const scheduleReconnect = () => {
+      if (disposed || document.visibilityState === "hidden") return;
+      const exponentialDelay = Math.min(1_000 * 2 ** failedConnections, 30_000);
+      const jitter = Math.floor(Math.random() * 500);
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        connect();
+      }, exponentialDelay + jitter);
+    };
 
-    // Deliberately no onerror-triggered reconnect loop: EventSource already
-    // auto-reconnects on transient drops per the `retry:` field the backend
-    // sends, and the browser tab losing focus/network is exactly when
-    // hammering the server-capped `maxConnectionsPerUser` would be worst.
-    return () => source.close();
+    const connect = () => {
+      if (disposed || document.visibilityState === "hidden") return;
+      source?.close();
+      source = new EventSource(`${API_BASE_URL}/me/notifications/stream`, { withCredentials: true });
+      openedAt = Date.now();
+
+      source.addEventListener("notification", () => {
+        queryClient.invalidateQueries({ queryKey: ["me", "notifications"] });
+      });
+      source.addEventListener("unavailable", () => {
+        queryClient.invalidateQueries({ queryKey: ["me", "notifications"] });
+      });
+      source.onerror = () => {
+        source?.close();
+        source = null;
+        // A connection that survived normal proxy idle windows was healthy;
+        // otherwise increase backoff so a broken development proxy or an
+        // unavailable dependency cannot create a rapid reconnect loop.
+        failedConnections = Date.now() - openedAt >= 30_000 ? 0 : Math.min(failedConnections + 1, 5);
+        scheduleReconnect();
+      };
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+        source?.close();
+        source = null;
+      } else if (!source && reconnectTimer === undefined) {
+        failedConnections = 0;
+        connect();
+      }
+    };
+
+    connect();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      source?.close();
+    };
   }, [enabled, capabilities?.sseNotifications, queryClient]);
 }

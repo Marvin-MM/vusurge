@@ -1,7 +1,11 @@
 import type { AccessContext } from '../../shared/authorization'
 import { requireActor } from '../../shared/authorization'
 import type { Page } from '../../shared/http'
-import type { ParticipationRow, ParticipationStatus } from './participation.repository'
+import type {
+  ParticipationListRow,
+  ParticipationRow,
+  ParticipationStatus,
+} from './participation.repository'
 import type { ParticipationService, RegisterInput } from './participation.service'
 
 function serializeSelf(row: ParticipationRow) {
@@ -28,9 +32,13 @@ function serializeOrganizer(row: ParticipationRow) {
   }
 }
 
-function serializeOrganizerPage(page: Page<ParticipationRow>) {
+function serializeOrganizerPage(page: Page<ParticipationListRow>) {
   return {
-    items: page.items.map(serializeOrganizer),
+    items: page.items.map((row) => ({
+      ...serializeOrganizer(row),
+      displayName: row.displayName,
+      email: row.email,
+    })),
     hasMore: page.hasMore,
     nextCursor: page.nextCursor,
   }

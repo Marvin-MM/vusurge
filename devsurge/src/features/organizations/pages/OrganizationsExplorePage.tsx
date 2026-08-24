@@ -17,7 +17,7 @@ export function OrganizationsExplorePage() {
     <PageContainer>
       <PageHeader
         title="Organizations"
-        description="Organizations hosting challenges on DevArena."
+        description="Organizations hosting challenges on VUSurge."
       />
 
       <div className="flex items-center justify-between gap-4 pb-6 border-b border-border/60">

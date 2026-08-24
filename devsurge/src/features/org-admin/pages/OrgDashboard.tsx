@@ -29,7 +29,7 @@ export function OrgDashboard() {
   // already gates the Members/Audit pages.
   const canViewMembers = can(userContext, "organization.manage_members");
   const canViewAudit = can(userContext, "organization.view_audit");
-  const { data: members = [] } = useOrganizationMembers(canViewMembers ? orgId : "");
+  const { data: memberPage } = useOrganizationMembers(canViewMembers ? orgId : "");
   const { items: auditEvents } = useOrgAuditEvents(orgId, { enabled: canViewAudit });
 
   const openChallenges = challenges.filter((c) => c.status === "OPEN" || c.status === "JUDGING");
@@ -60,7 +60,12 @@ export function OrgDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard title="Challenges" value={challenges.length} icon={Trophy} description={`${openChallenges.length} open or judging`} />
         {canViewMembers && (
-          <StatCard title="Members" value={members.length} icon={Users} description="Organization members" />
+          <StatCard
+            title="Members"
+            value={`${memberPage?.items.length ?? 0}${memberPage?.hasMore ? "+" : ""}`}
+            icon={Users}
+            description={memberPage?.hasMore ? "Active members (first 100)" : "Active organization members"}
+          />
         )}
         {canViewAudit && (
           <StatCard title="Recent Activity" value={auditEvents.length} icon={Activity} description="Recent audited actions" />

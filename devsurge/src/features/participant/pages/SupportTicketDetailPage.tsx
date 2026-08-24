@@ -18,7 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUserProfile } from "@/features/users/api/queries";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { toast } from "sonner";
-import { useUploadPrivateFile, useRequestPrivateFileDownload } from "@/lib/fileUpload";
+import { useUploadPrivateFile, useRequestPrivateFileDownload, useDeletePrivateFile } from "@/lib/fileUpload";
 
 function CommentAttachment({ fileId, displayName }: { fileId: string; displayName: string }) {
   const downloadMutation = useRequestPrivateFileDownload();
@@ -71,6 +71,7 @@ export function SupportTicketDetailPage() {
   const [replyText, setReplyText] = React.useState("");
   const [pendingAttachment, setPendingAttachment] = React.useState<{ fileId: string; displayName: string } | null>(null);
   const uploadMutation = useUploadPrivateFile();
+  const deleteAttachmentMutation = useDeletePrivateFile();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (isLoading) {
@@ -211,8 +212,53 @@ export function SupportTicketDetailPage() {
           <Card className="border-border p-4 space-y-3">
             <h4 className="text-xs font-bold text-foreground">Add a Reply</h4>
             <Textarea placeholder="Type your reply..." value={replyText} onChange={(e) => setReplyText(e.target.value)} className="text-xs min-h-[80px]" />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={handleSendReply} disabled={addCommentMutation.isPending || !replyText.trim()} className="text-xs font-semibold gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.pptx,.docx,.csv"
+              className="hidden"
+              onChange={(event) => handleAttachFile(event.target.files)}
+            />
+            {pendingAttachment && (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2 text-xs">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span className="min-w-0 flex-1 truncate">{pendingAttachment.displayName}</span>
+                <span className="text-[10px] text-muted-foreground">Scanning</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive"
+                  onClick={() => {
+                    deleteAttachmentMutation.mutate(pendingAttachment.fileId, {
+                      onSuccess: () => setPendingAttachment(null),
+                      onError: (err: any) => toast.error(err?.message || "Failed to remove attachment."),
+                    });
+                  }}
+                  disabled={deleteAttachmentMutation.isPending}
+                  aria-label="Remove attachment from reply"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              {ticket.organizationId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadMutation.isPending || Boolean(pendingAttachment)}
+                  className="text-xs h-8 gap-1.5"
+                >
+                  {uploadMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Paperclip className="h-3 w-3" />}
+                  {uploadMutation.isPending ? "Uploading..." : "Attach File"}
+                </Button>
+              ) : (
+                <span className="text-[10px] text-muted-foreground">Attachments require an organization-scoped ticket.</span>
+              )}
+              <Button size="sm" onClick={handleSendReply} disabled={addCommentMutation.isPending || (!replyText.trim() && !pendingAttachment)} className="text-xs font-semibold gap-1.5">
                 <Send className="h-3 w-3" />
                 <span>{addCommentMutation.isPending ? "Sending..." : "Post Reply"}</span>
               </Button>

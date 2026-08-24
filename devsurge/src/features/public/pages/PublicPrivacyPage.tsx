@@ -22,7 +22,7 @@ export function PublicPrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-foreground">1. Overview & Commitment</h2>
           <p>
-            DevArena ("Platform", "we", "us") values the privacy of innovators, judges, and organizing institutions. This policy details how participant profiles, team rosters, submission artifacts, and evaluation scores are processed and protected.
+            VUSurge ("Platform", "we", "us") values the privacy of innovators, judges, and organizing institutions. This policy details how participant profiles, team rosters, submission artifacts, and evaluation scores are processed and protected.
           </p>
         </section>
 

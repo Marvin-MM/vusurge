@@ -22,7 +22,7 @@ export function PublicTermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-foreground">1. Acceptance of Terms</h2>
           <p>
-            By accessing or creating an account on DevArena, you agree to be bound by these Terms of Service and all competition-specific rules established by host organizations.
+            By accessing or creating an account on VUSurge, you agree to be bound by these Terms of Service and all competition-specific rules established by host organizations.
           </p>
         </section>
 
@@ -36,7 +36,7 @@ export function PublicTermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-bold text-foreground">3. Judging & Score Deliberation Finality</h2>
           <p>
-            All evaluations conducted through DevArena rubrics are scored by assigned domain experts. Published winners represent final, verified allocations compliant with platform audit requirements.
+            All evaluations conducted through VUSurge rubrics are scored by assigned domain experts. Published winners represent final, verified allocations compliant with platform audit requirements.
           </p>
         </section>
 

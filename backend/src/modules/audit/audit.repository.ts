@@ -20,6 +20,18 @@ export interface AuditEventRow {
   createdAt: Date
 }
 
+/**
+ * An audit row plus the actor's display name. Resolved server-side because
+ * `/users/:id/profile` answers 404 for any user the caller does not share an
+ * organization with, and an audit actor is often exactly that (an applicant,
+ * a challenge participant, a platform admin) — leaving the reader with an
+ * unidentifiable log. `user`/`user_profile` carry no row-level security, so
+ * this resolves correctly inside a tenant transaction.
+ */
+export interface AuditEventWithActorRow extends AuditEventRow {
+  actorDisplayName: string | null
+}
+
 export interface PlatformAuditFilters {
   organizationId?: string
 }
@@ -36,7 +48,7 @@ export interface AuditRepository {
     tx: PrismaTransactionClient,
     organizationId: string,
     page: PageRequest,
-  ): Promise<Page<AuditEventRow>>
+  ): Promise<Page<AuditEventWithActorRow>>
   findForOrganization(
     tx: PrismaTransactionClient,
     organizationId: string,
@@ -46,7 +58,7 @@ export interface AuditRepository {
     tx: PrismaTransactionClient,
     filters: PlatformAuditFilters,
     page: PageRequest,
-  ): Promise<Page<AuditEventRow>>
+  ): Promise<Page<AuditEventWithActorRow>>
   findForPlatform(tx: PrismaTransactionClient, auditEventId: string): Promise<AuditEventRow | null>
   summarizeForOrganization(
     tx: PrismaTransactionClient,
@@ -88,6 +100,26 @@ function toRow(row: {
   }
 }
 
+/** Batch-resolves actor display names for a page of audit rows. */
+async function withActorNames(
+  tx: PrismaTransactionClient,
+  rows: AuditEventRow[],
+): Promise<AuditEventWithActorRow[]> {
+  const actorIds = [
+    ...new Set(rows.map((row) => row.actorUserId).filter((id): id is string => id !== null)),
+  ]
+  if (actorIds.length === 0) return rows.map((row) => ({ ...row, actorDisplayName: null }))
+  const users = await tx.user.findMany({
+    where: { id: { in: actorIds } },
+    select: { id: true, profile: { select: { displayName: true } } },
+  })
+  const byId = new Map(users.map((user) => [user.id, user.profile?.displayName ?? null]))
+  return rows.map((row) => ({
+    ...row,
+    actorDisplayName: row.actorUserId === null ? null : (byId.get(row.actorUserId) ?? null),
+  }))
+}
+
 export function createAuditRepository(): AuditRepository {
   return {
     async listForOrganization(tx, organizationId, page) {
@@ -106,7 +138,7 @@ export function createAuditRepository(): AuditRepository {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: page.limit + 1,
       })
-      return buildPage(rows.map(toRow), page, (row) => ({
+      return buildPage(await withActorNames(tx, rows.map(toRow)), page, (row) => ({
         at: row.createdAt.toISOString(),
         id: row.id,
       }))
@@ -133,7 +165,7 @@ export function createAuditRepository(): AuditRepository {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: page.limit + 1,
       })
-      return buildPage(rows.map(toRow), page, (row) => ({
+      return buildPage(await withActorNames(tx, rows.map(toRow)), page, (row) => ({
         at: row.createdAt.toISOString(),
         id: row.id,
       }))

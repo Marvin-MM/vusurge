@@ -66,7 +66,7 @@ export const handleOrganizationApplicationDecided: JobHandler = async (context) 
     organizationName: payload.organizationName,
     approved: payload.approved,
     reason: payload.reason,
-    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/organizations`,
+    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/app/organizations`,
   })
 
   await enqueueJobEmail(context, {
@@ -93,7 +93,8 @@ export const handleOrganizationApplicationDecided: JobHandler = async (context) 
 export const handleOrganizationInvitationCreated: JobHandler = async (context) => {
   const payload = context.payload as unknown as OrganizationInvitationCreatedPayload
 
-  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}/invitations/${payload.token}/accept`
+  const invitationPath = `/invitations/${payload.token}/accept`
+  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}${invitationPath}`
   const { subject, text } = EmailTemplates.organizationInviteEmail({
     organizationName: payload.organizationName,
     inviterName: 'An organizer',
@@ -124,6 +125,7 @@ export const handleOrganizationInvitationCreated: JobHandler = async (context) =
       category: 'ORGANIZATION_INVITE',
       title: `Invited to join ${payload.organizationName}`,
       body: subject,
+      linkUrl: invitationPath,
     })
   }
 }
@@ -133,7 +135,8 @@ export const handleTeamInvitationCreated: JobHandler = async (context) => {
   const email = await resolveEmail(context, payload.invitedUserId)
   if (email === null) return
 
-  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}/team-invitations/${payload.token}/accept`
+  const invitationPath = `/team-invitations/${payload.token}/accept`
+  const acceptUrl = `${context.infrastructure.config.app.webAppBaseUrl}${invitationPath}`
   const { subject, text } = EmailTemplates.teamInvitationEmail({
     teamName: payload.teamName,
     acceptUrl,
@@ -156,6 +159,7 @@ export const handleTeamInvitationCreated: JobHandler = async (context) => {
     category: 'TEAM_INVITATION',
     title: subject,
     body: `You've been invited to join the team "${payload.teamName}".`,
+    linkUrl: invitationPath,
   })
 }
 
@@ -168,7 +172,7 @@ export const handleOrganizationJoinRequestDecided: JobHandler = async (context) 
     organizationName: payload.organizationName,
     approved: payload.approved,
     reason: payload.reason,
-    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/organizations`,
+    dashboardUrl: `${context.infrastructure.config.app.webAppBaseUrl}/app/organizations`,
   })
 
   await enqueueJobEmail(context, {
@@ -200,7 +204,7 @@ export const handleAccountDeletionRequested: JobHandler = async (context) => {
 
   const { subject, text } = EmailTemplates.accountDeletionRequestedEmail({
     eligibleAtDisplay: payload.eligibleAt.slice(0, 10),
-    cancelUrl: `${context.infrastructure.config.app.webAppBaseUrl}/settings/account`,
+    cancelUrl: `${context.infrastructure.config.app.webAppBaseUrl}/app/settings`,
   })
 
   await enqueueJobEmail(context, {

@@ -59,7 +59,7 @@ export function PublicOrganizationsPage() {
             Host Organizations
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Browse verified organizations hosting challenges on DevArena — companies, universities, and community
+            Browse verified organizations hosting challenges on VUSurge — companies, universities, and community
             groups running their own innovation programs.
           </p>
         </div>

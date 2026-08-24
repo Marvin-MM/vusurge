@@ -15,20 +15,20 @@ import {
   usePublishFormVersion,
   useFormResponses,
 } from "@/features/forms/api/queries";
-import { useUserProfile } from "@/features/users/api/queries";
 import { FormResponseEntry, FormSchema } from "@/types";
 import { toast } from "sonner";
 
 function ResponseRow({ response }: { response: FormResponseEntry }) {
   const [expanded, setExpanded] = React.useState(false);
-  const { data: profile } = useUserProfile(response.userId);
 
   return (
     <div>
       <div onClick={() => setExpanded((v) => !v)} className="p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/20">
         <div className="flex items-center gap-2 text-xs">
           {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-          <span className="font-bold text-foreground">{profile?.displayName || response.userId.slice(0, 8)}</span>
+          <span className="font-bold text-foreground">
+            {response.displayName || response.email || response.userId.slice(0, 8)}
+          </span>
         </div>
         <span className="text-[11px] text-muted-foreground">{new Date(response.submittedAt).toLocaleString()}</span>
       </div>

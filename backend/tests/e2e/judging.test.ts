@@ -233,13 +233,11 @@ describe('judging: rubrics and scoring', () => {
     expect(assignment.body.status).toBe('ASSIGNED')
 
     // The judge sees it in their own cross-organization assignment list.
-    const myAssignments = await app.request<{ id: string; organizationId: string; challengeId: string }[]>(
-      'GET',
-      '/api/v1/judging/assignments',
-      {
-        cookies: judge.cookie,
-      },
-    )
+    const myAssignments = await app.request<
+      { id: string; organizationId: string; challengeId: string }[]
+    >('GET', '/api/v1/judging/assignments', {
+      cookies: judge.cookie,
+    })
     expect(myAssignments.status).toBe(200)
     expect(myAssignments.body.map((a) => a.id)).toContain(assignment.body.id)
     // organizationId must be present so a judge UI can resolve org-scoped
@@ -297,11 +295,11 @@ describe('judging: rubrics and scoring', () => {
     // which previously returned `comment: null` instead of omitting the key
     // — a shape the response schema rejected outright with a 422, making it
     // impossible for a judge to ever reload their own in-progress scorecard.
-    const reGet = await app.request<{ criterionScores: { criterionKey: string; comment?: string | null }[] }>(
-      'GET',
-      `/api/v1/judging/assignments/${assignment.body.id}/scorecard`,
-      { cookies: judge.cookie },
-    )
+    const reGet = await app.request<{
+      criterionScores: { criterionKey: string; comment?: string | null }[]
+    }>('GET', `/api/v1/judging/assignments/${assignment.body.id}/scorecard`, {
+      cookies: judge.cookie,
+    })
     expect(reGet.status).toBe(200)
     const innovationScore = reGet.body.criterionScores.find((c) => c.criterionKey === 'innovation')
     expect(innovationScore?.comment ?? null).toBeNull()
@@ -336,6 +334,19 @@ describe('judging: rubrics and scoring', () => {
     expect(submitted.body.status).toBe('SUBMITTED')
     expect(submitted.body.totalScore).toBe(22)
     expect(submitted.body.maxPossibleScore).toBe(30)
+
+    const organizerAssignments = await app.request<
+      { id: string; scorecardId: string | null; scorecardStatus: string | null }[]
+    >(
+      'GET',
+      `/api/v1/organizations/${organizationId}/challenges/${challengeId}/judge-assignments`,
+      { cookies: owner.cookie },
+    )
+    expect(organizerAssignments.status).toBe(200)
+    expect(organizerAssignments.body.find((item) => item.id === assignment.body.id)).toMatchObject({
+      scorecardId: expect.any(String),
+      scorecardStatus: 'SUBMITTED',
+    })
 
     // Progress shows aggregate counts only.
     const progress = await app.request<{ submittedCount: number; totalAssignments: number }>(

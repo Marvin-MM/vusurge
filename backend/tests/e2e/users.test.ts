@@ -61,6 +61,14 @@ describe('account deletion request', () => {
       new Date(requested.body.requestedAt).getTime(),
     )
 
+    const pending = await app.request<{ request: { id: string; status: string } }>(
+      'GET',
+      '/api/v1/me/account-deletion-request',
+      { cookies: user.cookie },
+    )
+    expect(pending.status).toBe(200)
+    expect(pending.body.request).toMatchObject({ id: requested.body.id, status: 'PENDING' })
+
     const replay = await app.request<{ id: string }>(
       'POST',
       '/api/v1/me/account-deletion-request',
@@ -91,6 +99,14 @@ describe('account deletion request', () => {
       cookies: user.cookie,
     })
     expect(cancelled.status).toBe(204)
+
+    const noLongerPending = await app.request<{ request: null }>(
+      'GET',
+      '/api/v1/me/account-deletion-request',
+      { cookies: user.cookie },
+    )
+    expect(noLongerPending.status).toBe(200)
+    expect(noLongerPending.body.request).toBeNull()
 
     // Cancelling again with nothing pending is a 404.
     const cancelAgain = await app.request('DELETE', '/api/v1/me/account-deletion-request', {

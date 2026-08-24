@@ -24,7 +24,15 @@ export const AuditEventResponse = t.Object({
   createdAt: t.String(),
 })
 
-export const AuditEventListResponse = PageOf(AuditEventResponse)
+/** The list projection resolves the actor's name server-side (see
+ *  AuditEventWithActorRow) so a log entry is readable even when the actor is
+ *  not someone the reader shares an organization with. */
+export const AuditEventWithActorResponse = t.Composite([
+  AuditEventResponse,
+  t.Object({ actorDisplayName: t.Union([t.String(), t.Null()]) }),
+])
+
+export const AuditEventListResponse = PageOf(AuditEventWithActorResponse)
 
 export const PlatformAuditListQuery = t.Object({
   organizationId: t.Optional(Uuid),

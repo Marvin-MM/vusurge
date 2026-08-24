@@ -7,20 +7,18 @@ import { Submission, SubmissionVersion } from "@/types";
 // flat top-level collection). A submission's editable content lives in its
 // `draftVersion` — see the `PATCH .../draft` mutation below.
 
-export function useSubmissions(organizationId: string, challengeId: string) {
-  return useQuery({
-    queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"],
-    queryFn: () => apiArray<Submission>(`/organizations/${organizationId}/challenges/${challengeId}/submissions`),
-    enabled: Boolean(organizationId) && Boolean(challengeId),
-  });
-}
-
 export function useSubmission(organizationId: string, challengeId: string, submissionId: string) {
   return useQuery({
     queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions", submissionId],
     queryFn: () =>
       apiGet<Submission>(`/organizations/${organizationId}/challenges/${challengeId}/submissions/${submissionId}`),
     enabled: Boolean(organizationId) && Boolean(challengeId) && Boolean(submissionId),
+    refetchInterval: (query) =>
+      query.state.data?.presentationFiles?.some(
+        (file) => file.scanStatus === "QUARANTINED" || file.scanStatus === "PENDING_UPLOAD",
+      )
+        ? 3_000
+        : false,
   });
 }
 
@@ -30,6 +28,12 @@ export function useMySubmission(organizationId: string, challengeId: string) {
     queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions", "me"],
     queryFn: () => apiGet<Submission | null>(`/organizations/${organizationId}/challenges/${challengeId}/submissions/me`),
     enabled: Boolean(organizationId) && Boolean(challengeId),
+    refetchInterval: (query) =>
+      query.state.data?.presentationFiles?.some(
+        (file) => file.scanStatus === "QUARANTINED" || file.scanStatus === "PENDING_UPLOAD",
+      )
+        ? 3_000
+        : false,
   });
 }
 
@@ -71,11 +75,17 @@ export function useSubmissionVersions(organizationId: string, challengeId: strin
 }
 
 /** Creates the submission shell (empty draft) — a team can only have one per challenge. */
+/**
+ * Starts (or returns) the caller's own submission for this challenge. The
+ * backend resolves the owning team from the caller's own approved
+ * participation and declares no request body at all — a submission can never
+ * be opened on behalf of another team, so this deliberately sends nothing.
+ */
 export function useCreateSubmission(organizationId: string, challengeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { teamId?: string; trackId?: string }) =>
-      apiPost<Submission>(`/organizations/${organizationId}/challenges/${challengeId}/submissions`, payload),
+    mutationFn: () =>
+      apiPost<Submission>(`/organizations/${organizationId}/challenges/${challengeId}/submissions`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizations", organizationId, "challenges", challengeId, "submissions"] });
     },

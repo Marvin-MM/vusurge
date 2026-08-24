@@ -50,7 +50,8 @@ export function participationRoutes(controller: ParticipationController, auth: A
     )
     .get(
       '/organizations/:organizationId/challenges/:challengeId/participation/application-form',
-      ({ access, params }) => controller.getApplicationForm(access, params.organizationId, params.challengeId),
+      ({ access, params }) =>
+        controller.getApplicationForm(access, params.organizationId, params.challengeId),
       {
         requireAuth: true,
         orgContext: true,

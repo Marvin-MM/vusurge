@@ -22,6 +22,7 @@ async function notifyApprovedParticipants(
   build: (challengeTitle: string) => { subject: string; text: string },
   emailCategory: (typeof EmailCategory)[keyof typeof EmailCategory],
   notificationCategory: NotificationCategory,
+  linkUrl = '/app/my-challenges',
 ): Promise<void> {
   const client = context.infrastructure.database.client
 
@@ -80,6 +81,7 @@ async function notifyApprovedParticipants(
         category: notificationCategory,
         title: subject,
         body: text.split('\n')[0] ?? subject,
+        linkUrl,
       })
     }),
   )
@@ -188,9 +190,10 @@ export const handleResultsPublished: JobHandler = async (context) => {
     (title) =>
       EmailTemplates.resultsPublishedEmail({
         challengeTitle: title,
-        resultsUrl: `${webAppBaseUrl}/challenges/${payload.challengeId}/results`,
+        resultsUrl: `${webAppBaseUrl}/app/results`,
       }),
     EmailCategory.ResultsPublished,
     'RESULTS_PUBLISHED',
+    '/app/results',
   )
 }
