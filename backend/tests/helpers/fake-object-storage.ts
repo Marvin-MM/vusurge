@@ -76,6 +76,7 @@ export function createFakeObjectStorage(): FakeObjectStorage {
   })
 
   const baseUrl = `http://127.0.0.1:${server.port}/objects`
+  server.unref()
 
   return {
     objects,
