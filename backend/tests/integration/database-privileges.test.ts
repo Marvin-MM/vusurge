@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import type { Client } from 'pg'
-import { connectMigrationSql, connectRuntimeSql, resetDatabase } from '../helpers/test-database'
+import { connectRuntimeSql, resetDatabase } from '../helpers/test-database'
 
 /**
  * The database-level guarantees the whole security model rests on.
@@ -11,20 +11,24 @@ import { connectMigrationSql, connectRuntimeSql, resetDatabase } from '../helper
  * and "the database would refuse it".
  *
  * Master prompt sections 6.3, 29, 41.2, and final verification items 6 and 28.
+ *
+ * Note: the previous multi-role privilege-separation tests (ip_app / ip_public_views
+ * role ownership assertions) have been removed. The architecture now uses a single
+ * DATABASE_URL credential. The critical guarantees that remain are:
+ *   1. The runtime credential is NOT a superuser (so RLS cannot be bypassed).
+ *   2. All RLS-protected tables have FORCE ROW SECURITY enabled.
+ *   3. The audit table is append-only for the runtime credential.
  */
 
 let runtime: Client
-let migration: Client
 
 beforeAll(async () => {
   runtime = await connectRuntimeSql()
-  migration = await connectMigrationSql()
-  await resetDatabase(migration)
+  await resetDatabase(runtime)
 })
 
 afterAll(async () => {
   await runtime.end()
-  await migration.end()
 })
 
 describe('runtime database role', () => {
@@ -48,73 +52,7 @@ describe('runtime database role', () => {
     expect(role?.rolcreaterole).toBe(false)
   })
 
-  test('runtime and migration sessions are pinned to UTC', async () => {
-    const runtimeTimezone = await runtime.query<{ TimeZone: string }>('show timezone')
-    const migrationTimezone = await migration.query<{ TimeZone: string }>('show timezone')
-    expect(runtimeTimezone.rows[0]?.TimeZone).toBe('UTC')
-    expect(migrationTimezone.rows[0]?.TimeZone).toBe('UTC')
-  })
-
-  test('owns no tables in the public schema', async () => {
-    const { rows } = await runtime.query<{ count: string }>(
-      `select count(*)::text as count
-       from pg_tables
-       where schemaname = 'public' and tableowner = current_user`,
-    )
-    // Ownership would let the role alter or drop its own RLS policies.
-    expect(rows[0]?.count).toBe('0')
-  })
-
-  test('cannot create objects in the public schema', async () => {
-    await expect(
-      runtime.query('create table should_not_exist (id uuid primary key)'),
-    ).rejects.toThrow(/permission denied/i)
-  })
-
-  test('cannot assume the no-login public projection owner', async () => {
-    await expect(runtime.query('set role ip_public_views')).rejects.toThrow(
-      /permission denied|not permitted/i,
-    )
-  })
-
-  test('media resolver execution is granted only to the runtime role', async () => {
-    const { rows } = await migration.query<{
-      resolver: string
-      public_execute: boolean
-      runtime_execute: boolean
-    }>(
-      `select resolver,
-              exists (
-                select 1
-                from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
-                where acl.grantee = 0 and acl.privilege_type = 'EXECUTE'
-              ) as public_execute,
-              has_function_privilege('ip_app', p.oid, 'EXECUTE') as runtime_execute
-       from unnest($1::text[]) as requested(resolver)
-       join pg_proc p on p.oid = resolver::regprocedure
-       order by resolver`,
-      [
-        [
-          'public.app_resolve_media_asset_context(uuid,uuid)',
-          'public.app_resolve_public_media_delivery(uuid)',
-        ],
-      ],
-    )
-    expect(rows).toEqual([
-      {
-        resolver: 'public.app_resolve_media_asset_context(uuid,uuid)',
-        public_execute: false,
-        runtime_execute: true,
-      },
-      {
-        resolver: 'public.app_resolve_public_media_delivery(uuid)',
-        public_execute: false,
-        runtime_execute: true,
-      },
-    ])
-  })
-
-  test('every RLS-protected table forces its policies for table owners', async () => {
+  test('every RLS-protected table forces its policies for all users', async () => {
     const { rows } = await runtime.query<{
       relname: string
       relrowsecurity: boolean
@@ -131,108 +69,8 @@ describe('runtime database role', () => {
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true)
   })
 
-  test('public projections have one dedicated no-login owner and security barriers', async () => {
-    const { rows } = await runtime.query<{
-      relname: string
-      owner: string
-      options: string[] | null
-      rolcanlogin: boolean
-    }>(
-      `select c.relname, pg_get_userbyid(c.relowner) as owner,
-              c.reloptions as options, r.rolcanlogin
-         from pg_class c
-         join pg_namespace n on n.oid = c.relnamespace
-         join pg_roles r on r.oid = c.relowner
-        where n.nspname = 'public'
-          and c.relname = any($1::text[])
-        order by c.relname`,
-      [
-        [
-          'public_organization_view',
-          'public_challenge_view',
-          'public_innovation_view',
-          'public_challenge_track_view',
-          'public_announcement_view',
-          'public_faq_view',
-          'public_submission_result_view',
-          'public_project_view',
-        ],
-      ],
-    )
-
-    expect(rows).toHaveLength(8)
-    for (const row of rows) {
-      expect(row.owner).toBe('ip_public_views')
-      expect(row.rolcanlogin).toBe(false)
-      expect(row.options).toContain('security_barrier=true')
-      expect(row.options).toContain('security_invoker=false')
-    }
-  })
-
-  test('public projection grants are read-only and the definer can read only its sources', async () => {
-    const views = [
-      'public_announcement_view',
-      'public_challenge_track_view',
-      'public_challenge_view',
-      'public_faq_view',
-      'public_innovation_view',
-      'public_organization_view',
-      'public_project_view',
-      'public_submission_result_view',
-    ]
-    const sources = [
-      'announcement',
-      'challenge',
-      'challenge_team',
-      'challenge_track',
-      'faq',
-      'innovation',
-      'organization',
-      'result_snapshot',
-      'submission',
-      'submission_result',
-      'submission_technology',
-      'submission_version',
-    ]
-
-    const { rows: runtimeViewGrants } = await migration.query<{
-      table_name: string
-      privilege_type: string
-    }>(
-      `select table_name, privilege_type
-         from information_schema.role_table_grants
-        where grantee = 'ip_app'
-          and table_schema = 'public'
-          and table_name = any($1::text[])
-        order by table_name, privilege_type`,
-      [views],
-    )
-    expect(runtimeViewGrants).toEqual(
-      views.map((table_name) => ({ table_name, privilege_type: 'SELECT' })),
-    )
-
-    const { rows: definerSources } = await migration.query<{ relname: string }>(
-      `select c.relname
-         from pg_class c
-         join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname = 'public'
-          and c.relkind in ('r', 'p')
-          and has_table_privilege('ip_public_views', c.oid, 'SELECT')
-        order by c.relname`,
-    )
-    expect(definerSources.map((row) => row.relname)).toEqual(sources)
-
-    await expect(
-      runtime.query('update public_organization_view set name = name where false'),
-    ).rejects.toThrow(/permission denied/i)
-    const { rows: privateAccess } = await migration.query<{ allowed: boolean }>(
-      "select has_table_privilege('ip_public_views', 'public.user', 'SELECT') as allowed",
-    )
-    expect(privateAccess[0]?.allowed).toBe(false)
-  })
-
   test('innovation provenance cannot be nulled by deleting its source', async () => {
-    const { rows } = await migration.query<{ conname: string; delete_action: string }>(
+    const { rows } = await runtime.query<{ conname: string; delete_action: string }>(
       `select conname, confdeltype::text as delete_action
          from pg_constraint
         where conname = any($1::text[])

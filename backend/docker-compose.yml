@@ -18,11 +18,9 @@ services:
     container_name: ip-dev-postgres
     restart: unless-stopped
     environment:
-      # Local development credentials only. Never used outside this compose file.
       POSTGRES_USER: ip_bootstrap
       POSTGRES_PASSWORD: ip_bootstrap_local_dev
-      POSTGRES_DB: innovation_platform
-      # Deterministic collation so index/order behaviour matches CI.
+      # DBs are created by the init script so they are owned by ip_app.
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     command:
       - postgres
@@ -35,11 +33,10 @@ services:
     ports:
       - "55433:5432"
     volumes:
-      # postgres:18+ images expect a single mount at /var/lib/postgresql and
-      # place the cluster in a major-version subdirectory beneath it.
       - postgres-data:/var/lib/postgresql
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ip_bootstrap -d innovation_platform"]
+      test: ["CMD-SHELL", "pg_isready -U ip_app -d innovation_platform"]
       interval: 5s
       timeout: 5s
       retries: 20

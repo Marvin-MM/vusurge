@@ -12,14 +12,11 @@ import { defineConfig } from 'prisma/config'
  * call automatically. DATABASE_URL is loaded from .env by Bun locally, and
  * injected via k8s Secret in production — same variable, both modes.
  *
- * Note: `prisma migrate dev` (development only) requires a shadow database.
- * If your provider does not support CREATE DATABASE (e.g. Neon free tier), use
- * `prisma db push` for local schema iteration instead.
+ * datasource is omitted when DATABASE_URL is not set so that commands that
+ * do not connect (validate, generate) succeed in the static-analysis CI job
+ * which does not spin up a database.
  */
 const databaseUrl = process.env['DATABASE_URL']
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is required.')
-}
 
 export default defineConfig({
   schema: 'prisma/schema',
@@ -27,7 +24,5 @@ export default defineConfig({
     path: 'prisma/migrations',
     seed: 'bun run prisma/seed.ts',
   },
-  datasource: {
-    url: databaseUrl,
-  },
+  ...(databaseUrl ? { datasource: { url: databaseUrl } } : {}),
 })

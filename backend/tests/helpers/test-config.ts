@@ -16,7 +16,7 @@ import type { AppConfig } from '../../src/shared/config/config.schema'
 export function loadTestConfig(overrides: Partial<Record<string, string>> = {}): AppConfig {
   const env: Record<string, string | undefined> = {
     // Default baseline for unit tests when running in isolated environments
-    DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/innovation_platform_test',
+    DATABASE_URL: 'postgresql://ip_app:ip_app_local_dev@127.0.0.1:55433/innovation_platform_test',
     CACHE_REDIS_URL: 'redis://127.0.0.1:6379',
     QUEUE_REDIS_URL: 'redis://127.0.0.1:6380',
     BETTER_AUTH_SECRET: 'ci_better_auth_secret_at_least_32_chars',

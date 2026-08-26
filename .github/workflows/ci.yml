@@ -120,9 +120,11 @@ jobs:
       TRUSTED_ORIGINS: http://localhost:3000
       # PORT must match the port used by the smoke-start health checks below.
       PORT: '8080'
-      # Single credential for migrations AND runtime in CI. The Postgres service
-      # container is ephemeral, so the superuser owning everything is fine here.
-      DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
+      # Migrations (db:migrate step below) override this per-step to the
+      # superuser so they can write _prisma_migrations and create all objects.
+      # Everything else — tests, smoke starts — uses ci_app, which is a
+      # non-superuser and therefore subject to RLS policies.
+      DATABASE_URL: postgresql://ci_app:ci_app@127.0.0.1:5432/innovation_platform
       CACHE_REDIS_URL: redis://127.0.0.1:6379
       QUEUE_REDIS_URL: redis://127.0.0.1:6380
       # CI-only values. Never reused anywhere else.
@@ -144,10 +146,36 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      # Proves every migration applies cleanly to an EMPTY database, which is
-      # what a disaster-recovery rebuild actually does.
+      # Proves every migration applies cleanly to an EMPTY database.
+      # Uses the superuser so it can write _prisma_migrations and create schema objects.
       - name: Apply migrations to an empty database
+        env:
+          DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
         run: bun run db:migrate
+
+      # Create a non-superuser ci_app for all test steps. Tests must run as a
+      # non-superuser so that RLS policies actually apply and cannot be bypassed.
+      # ci_bootstrap (superuser) retains object ownership; ci_app gets
+      # SELECT/INSERT/UPDATE/DELETE on all existing and future tables.
+      - name: Create non-superuser test role
+        run: |
+          PGPASSWORD=ci_bootstrap psql \
+            -h 127.0.0.1 -U ci_bootstrap -d innovation_platform \
+            <<'SQL'
+            CREATE USER ci_app WITH PASSWORD 'ci_app' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+            GRANT CONNECT ON DATABASE innovation_platform TO ci_app;
+            GRANT USAGE ON SCHEMA public TO ci_app;
+            GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO ci_app;
+            GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ci_app;
+            GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ci_app;
+            -- Future objects created by subsequent migrations are also covered.
+            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
+              GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO ci_app;
+            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
+              GRANT USAGE, SELECT ON SEQUENCES TO ci_app;
+            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
+              GRANT EXECUTE ON FUNCTIONS TO ci_app;
+          SQL
 
       # The generated Prisma client is committed so image builds need no
       # database. Regenerating it must produce no diff, or the committed copy
