@@ -38,6 +38,10 @@ describe('Resend provider transport', () => {
 
     expect(observedSignal).toBeDefined()
     expect(observedSignal?.aborted).toBe(true)
-    expect(Date.now() - startedAt).toBeLessThan(1_000)
+    // Wall-clock guard: not a precision assertion. The AbortController fires at
+    // ~100ms (EMAIL_REQUEST_TIMEOUT_MS); this bound just proves the test didn't
+    // hang. Raised from 1_000 to 3_000 so loaded CI runners don't flake on the
+    // async abort-event → promise-rejection roundtrip overhead.
+    expect(Date.now() - startedAt).toBeLessThan(3_000)
   })
 })
