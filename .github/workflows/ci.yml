@@ -520,9 +520,6 @@ jobs:
       # the old Job-based step did, with less moving CI machinery.
       - name: Roll out new images
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1
-        env:
-          API_IMAGE: ${{ needs.publish.outputs.api_image }}
-          WORKER_IMAGE: ${{ needs.publish.outputs.worker_image }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -532,9 +529,14 @@ jobs:
           # Fail fast if the VPS is unreachable rather than waiting the full job timeout.
           timeout: 30s
           command_timeout: 10m
-          envs: API_IMAGE,WORKER_IMAGE
           script: |
             set -euo pipefail
+
+            # Inject the image tags evaluated by GitHub Actions directly.
+            # This avoids reliance on SSH environment variable passing (which
+            # can fail and leave these empty, causing "Required value" errors).
+            API_IMAGE="${{ needs.publish.outputs.api_image }}"
+            WORKER_IMAGE="${{ needs.publish.outputs.worker_image }}"
 
             # k3s writes its kubeconfig to /etc/rancher/k3s/k3s.yaml which is
             # only readable by root. Point kubectl at the user's own copy
