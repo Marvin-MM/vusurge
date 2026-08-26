@@ -490,9 +490,8 @@ export function createFilesService(
 
     async getDownloadUrl(access, fileId) {
       const actor = requireVerifiedActor(access).actor
-      const scope = await transactions.withPlatformAccess(
-        (tx) => repository.resolveScope(tx, fileId, actor.userId),
-        { actorUserId: actor.userId, purpose: 'resolve-file-context' }
+      const scope = await transactions.withoutTenant((tx) =>
+        repository.resolveScope(tx, fileId, actor.userId),
       )
       if (scope === null) throw notFound()
       const context = await scopedAccess(access, scope.organizationId, scope.challengeId)
@@ -532,9 +531,8 @@ export function createFilesService(
 
     async remove(access, fileId) {
       const actor = requireFreshActor(access).actor
-      const scope = await transactions.withPlatformAccess(
-        (tx) => repository.resolveScope(tx, fileId, actor.userId),
-        { actorUserId: actor.userId, purpose: 'resolve-file-context' }
+      const scope = await transactions.withoutTenant((tx) =>
+        repository.resolveScope(tx, fileId, actor.userId),
       )
       if (scope === null) throw notFound()
       const context = await scopedAccess(access, scope.organizationId, scope.challengeId)

@@ -342,7 +342,7 @@ export function createMediaService(
     actorUserId: string,
     assetId: string,
   ): Promise<MediaAssetScope | null> {
-    return transactions.withPlatformAccess(
+    return transactions.withoutTenant(
       async (tx) => {
         const rows = await tx.$queryRaw<MediaAssetScope[]>`
           select id,
@@ -354,7 +354,7 @@ export function createMediaService(
         `
         return rows[0] ?? null
       },
-      { actorUserId, purpose: 'resolve-media-asset-context' },
+      { actorUserId },
     )
   }
 
@@ -616,23 +616,20 @@ export function createMediaService(
 
     async getPublicDeliveryUrl(assetId, ipAddress) {
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
-      const row = await transactions.withPlatformAccess(
-        async (tx) => {
-          const rows = await tx.$queryRaw<
-            Array<{
-              cloudinaryPublicId: string
-              deliveryType: MediaAssetRow['deliveryType']
-              format: string | null
-            }>
-          >`
-            select cloudinary_public_id as "cloudinaryPublicId",
-                   delivery_type as "deliveryType", format
-            from app_resolve_public_media_delivery(${assetId}::uuid)
-          `
-          return rows[0] ?? null
-        },
-        { actorUserId: 'system', purpose: 'resolve-public-media-delivery' }
-      )
+      const row = await transactions.withoutTenant(async (tx) => {
+        const rows = await tx.$queryRaw<
+          Array<{
+            cloudinaryPublicId: string
+            deliveryType: MediaAssetRow['deliveryType']
+            format: string | null
+          }>
+        >`
+          select cloudinary_public_id as "cloudinaryPublicId",
+                 delivery_type as "deliveryType", format
+          from app_resolve_public_media_delivery(${assetId}::uuid)
+        `
+        return rows[0] ?? null
+      })
       if (row === null) throw notFound('Media asset not found.')
       return imageProvider.getDeliveryUrl(
         row.cloudinaryPublicId,

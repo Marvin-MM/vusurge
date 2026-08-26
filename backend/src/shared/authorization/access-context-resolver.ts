@@ -72,65 +72,59 @@ export function createAccessContextResolver(
     },
 
     async resolveOrganization(organizationId, userId): Promise<OrganizationContext | null> {
-      return transactions.withPlatformAccess(
-        async (tx) => {
-          const rows = await tx.$queryRaw<
-            {
-              organizationId: string
-              organizationStatus: OrganizationContext['organizationStatus']
-              role: OrganizationContext['role']
-              membershipStatus: OrganizationContext['membershipStatus']
-            }[]
-          >`
-            select organization_id as "organizationId",
-                   organization_status as "organizationStatus",
-                   membership_role as role,
-                   membership_status as "membershipStatus"
-            from app_resolve_organization_context(${organizationId}::uuid, ${userId}::uuid)
-          `
-          const row = rows[0]
-          if (row === undefined) return null
-          return {
-            organizationId: row.organizationId,
-            organizationStatus: row.organizationStatus,
-            role: row.role,
-            membershipStatus: row.membershipStatus,
-          }
-        },
-        { actorUserId: userId ?? 'system', purpose: 'resolve-access-context' },
-      )
+      return transactions.withoutTenant(async (tx) => {
+        const rows = await tx.$queryRaw<
+          {
+            organizationId: string
+            organizationStatus: OrganizationContext['organizationStatus']
+            role: OrganizationContext['role']
+            membershipStatus: OrganizationContext['membershipStatus']
+          }[]
+        >`
+          select organization_id as "organizationId",
+                 organization_status as "organizationStatus",
+                 membership_role as role,
+                 membership_status as "membershipStatus"
+          from app_resolve_organization_context(${organizationId}::uuid, ${userId}::uuid)
+        `
+        const row = rows[0]
+        if (row === undefined) return null
+        return {
+          organizationId: row.organizationId,
+          organizationStatus: row.organizationStatus,
+          role: row.role,
+          membershipStatus: row.membershipStatus,
+        }
+      })
     },
 
     async resolveChallenge(challengeId, organizationId, userId): Promise<ChallengeContext | null> {
-      return transactions.withPlatformAccess(
-        async (tx) => {
-          const rows = await tx.$queryRaw<
-            {
-              challengeId: string
-              organizationId: string
-              staffRole: ChallengeContext['staffRole']
-              participationStatus: string | null
-            }[]
-          >`
-            select challenge_id as "challengeId", organization_id as "organizationId",
-                   staff_role as "staffRole", participation_status as "participationStatus"
-            from app_resolve_challenge_context(
-              ${challengeId}::uuid,
-              ${organizationId}::uuid,
-              ${userId}::uuid
-            )
-          `
-          const row = rows[0]
-          if (row === undefined) return null
-          return {
-            challengeId: row.challengeId,
-            organizationId: row.organizationId,
-            staffRole: row.staffRole,
-            isApprovedParticipant: row.participationStatus === 'APPROVED',
-          }
-        },
-        { actorUserId: userId ?? 'system', purpose: 'resolve-access-context' },
-      )
+      return transactions.withoutTenant(async (tx) => {
+        const rows = await tx.$queryRaw<
+          {
+            challengeId: string
+            organizationId: string
+            staffRole: ChallengeContext['staffRole']
+            participationStatus: string | null
+          }[]
+        >`
+          select challenge_id as "challengeId", organization_id as "organizationId",
+                 staff_role as "staffRole", participation_status as "participationStatus"
+          from app_resolve_challenge_context(
+            ${challengeId}::uuid,
+            ${organizationId}::uuid,
+            ${userId}::uuid
+          )
+        `
+        const row = rows[0]
+        if (row === undefined) return null
+        return {
+          challengeId: row.challengeId,
+          organizationId: row.organizationId,
+          staffRole: row.staffRole,
+          isApprovedParticipant: row.participationStatus === 'APPROVED',
+        }
+      })
     },
   }
 }
