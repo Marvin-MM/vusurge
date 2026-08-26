@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import type { Client } from 'pg'
-import { connectRuntimeSql, resetDatabase } from '../helpers/test-database'
 import { newId } from '../../src/shared/ids'
+import { connectRuntimeSql, resetDatabase } from '../helpers/test-database'
 
 /**
  * The database-level guarantees the whole security model rests on.

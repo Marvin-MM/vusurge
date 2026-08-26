@@ -146,36 +146,27 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      # Proves every migration applies cleanly to an EMPTY database.
-      # Uses the superuser so it can write _prisma_migrations and create schema objects.
-      - name: Apply migrations to an empty database
-        env:
-          DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
-        run: bun run db:migrate
-
       # Create a non-superuser ci_app for all test steps. Tests must run as a
       # non-superuser so that RLS policies actually apply and cannot be bypassed.
-      # ci_bootstrap (superuser) retains object ownership; ci_app gets
-      # SELECT/INSERT/UPDATE/DELETE on all existing and future tables.
+      # Because of the single-role architecture, the test role must be the
+      # database owner before running migrations.
       - name: Create non-superuser test role
         run: |
           PGPASSWORD=ci_bootstrap psql \
-            -h 127.0.0.1 -U ci_bootstrap -d innovation_platform \
+            -h 127.0.0.1 -U ci_bootstrap -d postgres \
             <<'SQL'
-            CREATE USER ci_app WITH PASSWORD 'ci_app' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
-            GRANT CONNECT ON DATABASE innovation_platform TO ci_app;
-            GRANT USAGE ON SCHEMA public TO ci_app;
-            GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO ci_app;
-            GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ci_app;
-            GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ci_app;
-            -- Future objects created by subsequent migrations are also covered.
-            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
-              GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO ci_app;
-            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
-              GRANT USAGE, SELECT ON SEQUENCES TO ci_app;
-            ALTER DEFAULT PRIVILEGES FOR ROLE ci_bootstrap IN SCHEMA public
-              GRANT EXECUTE ON FUNCTIONS TO ci_app;
+            CREATE USER ci_app WITH PASSWORD 'ci_app' CREATEDB;
+            ALTER DATABASE innovation_platform OWNER TO ci_app;
           SQL
+
+      # Proves every migration applies cleanly to an EMPTY database.
+      # Uses the ci_app owner credential so it executes exactly like production,
+      # ensuring object ownership and explicitly revoked privileges (like on
+      # audit_event) are enforced correctly for the application role.
+      - name: Apply migrations to an empty database
+        env:
+          DATABASE_URL: postgresql://ci_app:ci_app@127.0.0.1:5432/innovation_platform
+        run: bun run db:migrate
 
       # The generated Prisma client is committed so image builds need no
       # database. Regenerating it must produce no diff, or the committed copy

@@ -35,7 +35,7 @@ export async function connectRuntimeSql(): Promise<Client> {
   return client
 }
 
-/** Raw pg client bound to the schema-owning migration role. 
+/** Raw pg client bound to the schema-owning migration role.
  *  With the single-URL architecture, this uses the same credential as runtime
  *  but elevates its privileges session-wide using platform access so it can
  *  bypass RLS for test setup and teardown.
