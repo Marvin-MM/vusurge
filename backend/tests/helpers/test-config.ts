@@ -43,6 +43,16 @@ export function loadTestConfig(overrides: Partial<Record<string, string>> = {}):
     OTEL_METRICS_ENABLED: 'false',
     // Rate limits are asserted explicitly by the tests that care about them.
     RATE_LIMIT_ENABLED: overrides['RATE_LIMIT_ENABLED'] ?? 'false',
+    // Self-contained required credentials: unit tests must not fail because an
+    // enclosing CI job set these to an invalid value (e.g. wrong byte length).
+    // Values are throwaway CI-only constants; they never touch a real database.
+    //   ci_unit_test_auth_secret_32chars = 32 chars, satisfies ≥32 requirement
+    //   ci_encryption_key_exactly_32byte = base64(32 bytes), verified by:
+    //     echo -n "Y2lfZW5jcnlwdGlvbl9rZXlfZXhhY3RseV8zMmJ5dGU=" | base64 -d | wc -c
+    BETTER_AUTH_SECRET:
+      overrides['BETTER_AUTH_SECRET'] ?? 'ci_unit_test_auth_secret_32chars',
+    ENCRYPTION_MASTER_KEY:
+      overrides['ENCRYPTION_MASTER_KEY'] ?? 'Y2lfZW5jcnlwdGlvbl9rZXlfZXhhY3RseV8zMmJ5dGU=',
     ...overrides,
   }
 
