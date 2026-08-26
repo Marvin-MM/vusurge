@@ -118,6 +118,8 @@ jobs:
       PUBLIC_BASE_URL: http://localhost:8080
       WEB_APP_BASE_URL: http://localhost:3000
       TRUSTED_ORIGINS: http://localhost:3000
+      # PORT must match the port used by the smoke-start health checks below.
+      PORT: '8080'
       BOOTSTRAP_DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
       DB_MIGRATOR_USER: ip_migrator
       DB_MIGRATOR_PASSWORD: ci_migrator
@@ -214,21 +216,39 @@ jobs:
       # Both processes must reach a serving state with real dependencies.
       - name: Smoke start the API process
         run: |
-          bun run src/index.ts &
+          # Redirect stderr to a log so we can surface it on failure.
+          bun run src/index.ts 2>/tmp/api-smoke.log &
           API_PID=$!
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8080/health/ready > /dev/null; then
-              echo "API reported ready"
+
+          # Give the process 1 s to fail fast on a configuration error before
+          # we start polling, and surface that error immediately if it does.
+          sleep 1
+          if ! kill -0 "$API_PID" 2>/dev/null; then
+            echo "::error::API process exited during startup"
+            cat /tmp/api-smoke.log
+            exit 1
+          fi
+
+          # Poll /health/ready up to 45 times (≈ 90 s with 2 s back-off).
+          READY=0
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8080/health/ready > /dev/null 2>&1; then
+              echo "API reported ready after ${attempt} attempt(s)"
+              READY=1
               break
             fi
-            if [ "$attempt" -eq 30 ]; then
-              echo "::error::API never became ready"
-              kill "$API_PID" 2>/dev/null || true
-              exit 1
-            fi
-            sleep 1
+            sleep 2
           done
-          # Graceful shutdown must succeed within the configured budget.
+
+          if [ "$READY" -eq 0 ]; then
+            echo "::error::API never became ready within 90 s"
+            echo "--- last 30 lines of API stderr ---"
+            tail -n 30 /tmp/api-smoke.log || true
+            kill "$API_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          # Graceful shutdown must complete within the configured budget.
           kill -TERM "$API_PID"
           wait "$API_PID" || true
 
@@ -236,13 +256,19 @@ jobs:
         env:
           PROCESS_ROLE: worker
         run: |
-          bun run src/worker.ts &
+          bun run src/worker.ts 2>/tmp/worker-smoke.log &
           WORKER_PID=$!
-          sleep 8
+
+          # Wait for the worker to initialise its queue connections (≈ 5–8 s).
+          sleep 10
+
           if ! kill -0 "$WORKER_PID" 2>/dev/null; then
             echo "::error::Worker process exited unexpectedly"
+            echo "--- last 30 lines of worker stderr ---"
+            tail -n 30 /tmp/worker-smoke.log || true
             exit 1
           fi
+
           kill -TERM "$WORKER_PID"
           wait "$WORKER_PID" || true
 
