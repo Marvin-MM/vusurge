@@ -116,7 +116,7 @@ describe('idempotent execution', () => {
   })
 
   test('scopes keys to the actor', async () => {
-    const key = 'shared-key'
+    const key = `shared-key-1-${newId()}`
     let invocations = 0
     const operation = async () => {
       invocations += 1
@@ -142,7 +142,7 @@ describe('idempotent execution', () => {
   })
 
   test('scopes keys to the operation', async () => {
-    const key = 'shared-key-2'
+    const key = `shared-key-2-${newId()}`
     let invocations = 0
     const operation = async () => {
       invocations += 1

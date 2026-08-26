@@ -35,10 +35,15 @@ export async function connectRuntimeSql(): Promise<Client> {
   return client
 }
 
-/** Raw pg client bound to the schema-owning migration role. */
+/** Raw pg client bound to the schema-owning migration role. 
+ *  With the single-URL architecture, this uses the same credential as runtime
+ *  but elevates its privileges session-wide using platform access so it can
+ *  bypass RLS for test setup and teardown.
+ */
 export async function connectMigrationSql(): Promise<Client> {
   const client = new Client({ connectionString: testMigrationDatabaseUrl() })
   await client.connect()
+  await client.query("select set_config('app.platform_access', 'on', false)")
   return client
 }
 
@@ -60,7 +65,7 @@ export async function connectMigrationSql(): Promise<Client> {
  */
 export async function resetDatabase(client: Client): Promise<void> {
   const { rows } = await client.query<{ tablename: string }>(
-    `select tablename from pg_tables where schemaname = 'public' and tablename <> '_prisma_migrations'`,
+    `select tablename from pg_tables where schemaname = 'public' and tablename not in ('_prisma_migrations', 'audit_event', 'idempotency_record')`,
   )
   if (rows.length === 0) return
   const tables = rows.map((row) => `"${row.tablename}"`).join(', ')

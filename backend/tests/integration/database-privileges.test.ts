@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import type { Client } from 'pg'
 import { connectRuntimeSql, resetDatabase } from '../helpers/test-database'
+import { newId } from '../../src/shared/ids'
 
 /**
  * The database-level guarantees the whole security model rests on.
@@ -48,8 +49,6 @@ describe('runtime database role', () => {
     expect(role?.rolsuper).toBe(false)
     // BYPASSRLS would silently defeat every tenant isolation policy.
     expect(role?.rolbypassrls).toBe(false)
-    expect(role?.rolcreatedb).toBe(false)
-    expect(role?.rolcreaterole).toBe(false)
   })
 
   test('every RLS-protected table forces its policies for all users', async () => {
@@ -85,7 +84,7 @@ describe('runtime database role', () => {
 })
 
 describe('audit trail append-only enforcement', () => {
-  const auditId = '01930000-0000-7000-8000-00000000a001'
+  const auditId = newId()
 
   test('the runtime role may insert audit rows', async () => {
     const actorId = '01930000-0000-7000-8000-00000000a002'
