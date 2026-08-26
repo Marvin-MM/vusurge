@@ -90,11 +90,8 @@ export interface InfrastructureOptions {
   /** Injected by tests that need to observe image-provider calls without a real Cloudinary account. */
   readonly imageProvider?: ImageProvider
   readonly integrationWebhookTransport?: IntegrationWebhookTransport
+  readonly objectStorage?: ObjectStorage
 }
-
-// Object storage has no injectable test override: exports are tested against
-// the real local MinIO instance, the same "real infrastructure" approach
-// already used for PostgreSQL and Redis, not a faked provider boundary.
 
 export function buildInfrastructure(options: InfrastructureOptions = {}): Infrastructure {
   const config = options.config ?? loadConfig()
@@ -132,7 +129,7 @@ export function buildInfrastructure(options: InfrastructureOptions = {}): Infras
   const imageProvider = options.imageProvider ?? createImageProvider(config, logger)
   const integrationWebhookTransport =
     options.integrationWebhookTransport ?? createIntegrationWebhookTransport()
-  const objectStorage = createObjectStorage(config, logger)
+  const objectStorage = options.objectStorage ?? createObjectStorage(config, logger)
   const fileScanner = createFileScanner(config)
   const auth = createBetterAuth(config, database, transactions, emailDeliveries, logger)
 

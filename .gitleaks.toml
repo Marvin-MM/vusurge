@@ -1,0 +1,6 @@
+[allowlist]
+description = "Ignore test suites, fixtures and examples containing dummy test tokens"
+paths = [
+  '''backend/tests/.*''',
+  '''\.env\.example''',
+]

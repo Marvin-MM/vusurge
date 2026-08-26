@@ -20,7 +20,7 @@ export function loadTestConfig(overrides: Partial<Record<string, string>> = {}):
     CACHE_REDIS_URL: 'redis://127.0.0.1:6379',
     QUEUE_REDIS_URL: 'redis://127.0.0.1:6380',
     BETTER_AUTH_SECRET: 'ci_better_auth_secret_at_least_32_chars',
-    ENCRYPTION_MASTER_KEY: 'Y2lfZW5jcnlwdGlvbl9rZXlfZXhhY3RseV8zMmJ5dGU=',
+    ENCRYPTION_MASTER_KEY: Buffer.from('ci_test_encryption_key_32_bytes').toString('base64'),
     ...process.env,
     APP_ENV: 'test',
     PROCESS_ROLE: 'api',

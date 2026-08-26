@@ -9,6 +9,7 @@ import {
   createFakeIntegrationWebhookTransport,
   type FakeIntegrationWebhookTransport,
 } from './fake-integration-transport'
+import { createFakeObjectStorage, type FakeObjectStorage } from './fake-object-storage'
 import { loadTestConfig } from './test-config'
 
 /**
@@ -25,6 +26,7 @@ export interface TestInfrastructure extends Infrastructure {
   /** Same object as `emailProvider`, narrowed so tests can inspect sent mail. */
   readonly fakeEmail: FakeEmailProvider
   readonly fakeIntegrationWebhook: FakeIntegrationWebhookTransport
+  readonly fakeObjectStorage: FakeObjectStorage
 }
 
 interface TestInfrastructureOptions {
@@ -40,11 +42,13 @@ export async function createTestInfrastructure(
   const logger = createLogger(config)
   const fakeEmail = createFakeEmailProvider()
   const fakeIntegrationWebhook = createFakeIntegrationWebhookTransport()
+  const fakeObjectStorage = createFakeObjectStorage()
   const infrastructure = buildInfrastructure({
     config,
     logger,
     emailProvider: fakeEmail,
     integrationWebhookTransport: fakeIntegrationWebhook,
+    objectStorage: fakeObjectStorage,
   })
 
   if (options.connectDependencies !== false) {
@@ -59,6 +63,7 @@ export async function createTestInfrastructure(
     ...infrastructure,
     fakeEmail,
     fakeIntegrationWebhook,
+    fakeObjectStorage,
     async dispose(): Promise<void> {
       if (options.connectDependencies === false) {
         await infrastructure.queues.close()
