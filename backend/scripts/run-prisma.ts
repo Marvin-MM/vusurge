@@ -21,26 +21,24 @@ if (prismaArguments.length === 0) {
 const childEnvironment = { ...process.env }
 
 if (useTestDatabase) {
-  const testMigrationUrl = process.env.TEST_MIGRATION_DATABASE_URL
-  if (testMigrationUrl === undefined || testMigrationUrl.trim() === '') {
-    console.error('TEST_MIGRATION_DATABASE_URL is required for --test-database.')
+  const testDatabaseUrl = process.env.TEST_DATABASE_URL
+  if (testDatabaseUrl === undefined || testDatabaseUrl.trim() === '') {
+    console.error('TEST_DATABASE_URL is required for --test-database.')
     process.exit(78)
   }
-  if (testMigrationUrl === process.env.MIGRATION_DATABASE_URL) {
-    console.error('Refusing to use the primary migration database as the isolated test database.')
+  if (testDatabaseUrl === process.env.DATABASE_URL) {
+    console.error('Refusing to use the primary database as the isolated test database.')
     process.exit(78)
   }
 
-  const testDatabaseName = decodeURIComponent(new URL(testMigrationUrl).pathname.slice(1))
+  const testDatabaseName = decodeURIComponent(new URL(testDatabaseUrl).pathname.slice(1))
   if (!/(^|_)test($|_)/i.test(testDatabaseName)) {
-    console.error(`Refusing test migration URL with non-test database name: ${testDatabaseName}`)
+    console.error(`Refusing test URL with non-test database name: ${testDatabaseName}`)
     process.exit(78)
   }
 
-  childEnvironment.MIGRATION_DATABASE_URL = testMigrationUrl
-  // `migrate deploy` does not need a shadow database. Avoid accidentally
-  // coupling an isolated test migration to the development shadow database.
-  childEnvironment.SHADOW_DATABASE_URL = undefined
+  // Override DATABASE_URL so prisma.config.ts picks up the test database.
+  childEnvironment.DATABASE_URL = testDatabaseUrl
 }
 
 const child = Bun.spawn(['bunx', 'prisma', ...prismaArguments], {

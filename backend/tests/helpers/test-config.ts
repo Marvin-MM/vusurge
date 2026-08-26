@@ -16,7 +16,7 @@ import type { AppConfig } from '../../src/shared/config/config.schema'
 export function loadTestConfig(overrides: Partial<Record<string, string>> = {}): AppConfig {
   const env: Record<string, string | undefined> = {
     // Default baseline for unit tests when running in isolated environments
-    DATABASE_URL: 'postgresql://ip_app:ci_app@127.0.0.1:5432/innovation_platform',
+    DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:5432/innovation_platform_test',
     CACHE_REDIS_URL: 'redis://127.0.0.1:6379',
     QUEUE_REDIS_URL: 'redis://127.0.0.1:6380',
     BETTER_AUTH_SECRET: 'ci_better_auth_secret_at_least_32_chars',
@@ -67,11 +67,11 @@ export function testDatabaseUrl(): string {
   return url
 }
 
-/** The migration-role connection, used to assert privilege separation. */
+/** The migration-role connection.
+ * With a single-credential model, this is identical to `testDatabaseUrl()`.
+ * Kept for backwards-compat so existing test imports do not break.
+ * @deprecated Use testDatabaseUrl() directly.
+ */
 export function testMigrationDatabaseUrl(): string {
-  const url = process.env['TEST_MIGRATION_DATABASE_URL'] ?? process.env['MIGRATION_DATABASE_URL']
-  if (url === undefined || url === '') {
-    throw new Error('MIGRATION_DATABASE_URL must be set for the integration suite.')
-  }
-  return url
+  return testDatabaseUrl()
 }

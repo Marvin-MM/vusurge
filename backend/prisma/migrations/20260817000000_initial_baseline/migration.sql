@@ -25,7 +25,7 @@ SET row_security = off;
 -- Name: public; Type: SCHEMA; Schema: -; Owner: ip_migrator
 --
 
-ALTER SCHEMA public OWNER TO ip_migrator;
+-- [neon-compat] ALTER SCHEMA public OWNER TO ip_migrator;
 
 --
 -- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: ip_migrator
@@ -36,7 +36,7 @@ COMMENT ON SCHEMA public IS 'standard public schema';
 -- The dedicated definer for public projection views must be eligible to own
 -- objects in this schema before pg_dump's ALTER VIEW OWNER statements run.
 -- Runtime access to the role is revoked again in the grants section below.
-GRANT USAGE, CREATE ON SCHEMA public TO ip_public_views;
+-- [neon-compat] GRANT USAGE, CREATE ON SCHEMA public TO ip_public_views;
 
 -- pg_trgm is a trusted extension and is part of the application schema: the
 -- baseline must recreate it after Prisma resets a disposable shadow schema.
@@ -54,7 +54,7 @@ CREATE TYPE public."AccountDeletionStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."AccountDeletionStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."AccountDeletionStatus" OWNER TO ip_migrator;
 
 --
 -- Name: AnnouncementAudience; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -67,7 +67,7 @@ CREATE TYPE public."AnnouncementAudience" AS ENUM (
 );
 
 
-ALTER TYPE public."AnnouncementAudience" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."AnnouncementAudience" OWNER TO ip_migrator;
 
 --
 -- Name: AnnouncementPriority; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -81,7 +81,7 @@ CREATE TYPE public."AnnouncementPriority" AS ENUM (
 );
 
 
-ALTER TYPE public."AnnouncementPriority" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."AnnouncementPriority" OWNER TO ip_migrator;
 
 --
 -- Name: AuditActorType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -94,7 +94,7 @@ CREATE TYPE public."AuditActorType" AS ENUM (
 );
 
 
-ALTER TYPE public."AuditActorType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."AuditActorType" OWNER TO ip_migrator;
 
 --
 -- Name: ChallengeParticipationPolicy; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -107,7 +107,7 @@ CREATE TYPE public."ChallengeParticipationPolicy" AS ENUM (
 );
 
 
-ALTER TYPE public."ChallengeParticipationPolicy" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ChallengeParticipationPolicy" OWNER TO ip_migrator;
 
 --
 -- Name: ChallengeStaffRoleDb; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -119,7 +119,7 @@ CREATE TYPE public."ChallengeStaffRoleDb" AS ENUM (
 );
 
 
-ALTER TYPE public."ChallengeStaffRoleDb" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ChallengeStaffRoleDb" OWNER TO ip_migrator;
 
 --
 -- Name: ChallengeStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -138,7 +138,7 @@ CREATE TYPE public."ChallengeStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ChallengeStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ChallengeStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ChallengeVisibility; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -151,7 +151,7 @@ CREATE TYPE public."ChallengeVisibility" AS ENUM (
 );
 
 
-ALTER TYPE public."ChallengeVisibility" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ChallengeVisibility" OWNER TO ip_migrator;
 
 --
 -- Name: ContentReportCategory; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -167,7 +167,7 @@ CREATE TYPE public."ContentReportCategory" AS ENUM (
 );
 
 
-ALTER TYPE public."ContentReportCategory" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ContentReportCategory" OWNER TO ip_migrator;
 
 --
 -- Name: ContentReportStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -181,7 +181,7 @@ CREATE TYPE public."ContentReportStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ContentReportStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ContentReportStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ContentReportTargetType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -193,7 +193,7 @@ CREATE TYPE public."ContentReportTargetType" AS ENUM (
 );
 
 
-ALTER TYPE public."ContentReportTargetType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ContentReportTargetType" OWNER TO ip_migrator;
 
 --
 -- Name: EmailDeliveryAttemptOutcome; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -208,7 +208,7 @@ CREATE TYPE public."EmailDeliveryAttemptOutcome" AS ENUM (
 );
 
 
-ALTER TYPE public."EmailDeliveryAttemptOutcome" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."EmailDeliveryAttemptOutcome" OWNER TO ip_migrator;
 
 --
 -- Name: EmailDeliveryStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -226,7 +226,7 @@ CREATE TYPE public."EmailDeliveryStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."EmailDeliveryStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."EmailDeliveryStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ExportStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -240,7 +240,7 @@ CREATE TYPE public."ExportStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ExportStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ExportStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ExportType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -254,7 +254,7 @@ CREATE TYPE public."ExportType" AS ENUM (
 );
 
 
-ALTER TYPE public."ExportType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ExportType" OWNER TO ip_migrator;
 
 --
 -- Name: FileAssetPurpose; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -267,7 +267,7 @@ CREATE TYPE public."FileAssetPurpose" AS ENUM (
 );
 
 
-ALTER TYPE public."FileAssetPurpose" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."FileAssetPurpose" OWNER TO ip_migrator;
 
 --
 -- Name: FileAssetStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -280,7 +280,7 @@ CREATE TYPE public."FileAssetStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."FileAssetStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."FileAssetStatus" OWNER TO ip_migrator;
 
 --
 -- Name: FormPurpose; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -295,7 +295,7 @@ CREATE TYPE public."FormPurpose" AS ENUM (
 );
 
 
-ALTER TYPE public."FormPurpose" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."FormPurpose" OWNER TO ip_migrator;
 
 --
 -- Name: InnovationEvidenceType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -308,7 +308,7 @@ CREATE TYPE public."InnovationEvidenceType" AS ENUM (
 );
 
 
-ALTER TYPE public."InnovationEvidenceType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InnovationEvidenceType" OWNER TO ip_migrator;
 
 --
 -- Name: InnovationMetricType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -321,7 +321,7 @@ CREATE TYPE public."InnovationMetricType" AS ENUM (
 );
 
 
-ALTER TYPE public."InnovationMetricType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InnovationMetricType" OWNER TO ip_migrator;
 
 --
 -- Name: InnovationMilestoneStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -336,7 +336,7 @@ CREATE TYPE public."InnovationMilestoneStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."InnovationMilestoneStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InnovationMilestoneStatus" OWNER TO ip_migrator;
 
 --
 -- Name: InnovationRiskLevel; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -349,7 +349,7 @@ CREATE TYPE public."InnovationRiskLevel" AS ENUM (
 );
 
 
-ALTER TYPE public."InnovationRiskLevel" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InnovationRiskLevel" OWNER TO ip_migrator;
 
 --
 -- Name: InnovationStage; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -367,7 +367,7 @@ CREATE TYPE public."InnovationStage" AS ENUM (
 );
 
 
-ALTER TYPE public."InnovationStage" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InnovationStage" OWNER TO ip_migrator;
 
 --
 -- Name: IntegrationDeliveryAttemptOutcome; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -381,7 +381,7 @@ CREATE TYPE public."IntegrationDeliveryAttemptOutcome" AS ENUM (
 );
 
 
-ALTER TYPE public."IntegrationDeliveryAttemptOutcome" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."IntegrationDeliveryAttemptOutcome" OWNER TO ip_migrator;
 
 --
 -- Name: IntegrationDeliveryStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -395,7 +395,7 @@ CREATE TYPE public."IntegrationDeliveryStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."IntegrationDeliveryStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."IntegrationDeliveryStatus" OWNER TO ip_migrator;
 
 --
 -- Name: IntegrationProvider; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -407,7 +407,7 @@ CREATE TYPE public."IntegrationProvider" AS ENUM (
 );
 
 
-ALTER TYPE public."IntegrationProvider" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."IntegrationProvider" OWNER TO ip_migrator;
 
 --
 -- Name: IntegrationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -420,7 +420,7 @@ CREATE TYPE public."IntegrationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."IntegrationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."IntegrationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: InvitationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -435,7 +435,7 @@ CREATE TYPE public."InvitationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."InvitationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."InvitationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: JoinRequestStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -449,7 +449,7 @@ CREATE TYPE public."JoinRequestStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."JoinRequestStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."JoinRequestStatus" OWNER TO ip_migrator;
 
 --
 -- Name: JudgeAssignmentStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -463,7 +463,7 @@ CREATE TYPE public."JudgeAssignmentStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."JudgeAssignmentStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."JudgeAssignmentStatus" OWNER TO ip_migrator;
 
 --
 -- Name: MediaAssetDeliveryType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -475,7 +475,7 @@ CREATE TYPE public."MediaAssetDeliveryType" AS ENUM (
 );
 
 
-ALTER TYPE public."MediaAssetDeliveryType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."MediaAssetDeliveryType" OWNER TO ip_migrator;
 
 --
 -- Name: MediaAssetPurpose; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -492,7 +492,7 @@ CREATE TYPE public."MediaAssetPurpose" AS ENUM (
 );
 
 
-ALTER TYPE public."MediaAssetPurpose" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."MediaAssetPurpose" OWNER TO ip_migrator;
 
 --
 -- Name: MediaAssetStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -506,7 +506,7 @@ CREATE TYPE public."MediaAssetStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."MediaAssetStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."MediaAssetStatus" OWNER TO ip_migrator;
 
 --
 -- Name: MembershipStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -518,7 +518,7 @@ CREATE TYPE public."MembershipStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."MembershipStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."MembershipStatus" OWNER TO ip_migrator;
 
 --
 -- Name: NotificationCategory; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -544,7 +544,7 @@ CREATE TYPE public."NotificationCategory" AS ENUM (
 );
 
 
-ALTER TYPE public."NotificationCategory" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."NotificationCategory" OWNER TO ip_migrator;
 
 --
 -- Name: OrganizationApplicationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -559,7 +559,7 @@ CREATE TYPE public."OrganizationApplicationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."OrganizationApplicationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OrganizationApplicationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: OrganizationJoinPolicy; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -573,7 +573,7 @@ CREATE TYPE public."OrganizationJoinPolicy" AS ENUM (
 );
 
 
-ALTER TYPE public."OrganizationJoinPolicy" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OrganizationJoinPolicy" OWNER TO ip_migrator;
 
 --
 -- Name: OrganizationRole; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -587,7 +587,7 @@ CREATE TYPE public."OrganizationRole" AS ENUM (
 );
 
 
-ALTER TYPE public."OrganizationRole" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OrganizationRole" OWNER TO ip_migrator;
 
 --
 -- Name: OrganizationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -600,7 +600,7 @@ CREATE TYPE public."OrganizationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."OrganizationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OrganizationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: OrganizationVisibility; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -612,7 +612,7 @@ CREATE TYPE public."OrganizationVisibility" AS ENUM (
 );
 
 
-ALTER TYPE public."OrganizationVisibility" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OrganizationVisibility" OWNER TO ip_migrator;
 
 --
 -- Name: OutboxState; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -626,7 +626,7 @@ CREATE TYPE public."OutboxState" AS ENUM (
 );
 
 
-ALTER TYPE public."OutboxState" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."OutboxState" OWNER TO ip_migrator;
 
 --
 -- Name: ParticipationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -641,7 +641,7 @@ CREATE TYPE public."ParticipationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ParticipationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ParticipationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: PlatformRole; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -653,7 +653,7 @@ CREATE TYPE public."PlatformRole" AS ENUM (
 );
 
 
-ALTER TYPE public."PlatformRole" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."PlatformRole" OWNER TO ip_migrator;
 
 --
 -- Name: ProfileVisibility; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -666,7 +666,7 @@ CREATE TYPE public."ProfileVisibility" AS ENUM (
 );
 
 
-ALTER TYPE public."ProfileVisibility" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ProfileVisibility" OWNER TO ip_migrator;
 
 --
 -- Name: ReminderScheduleKind; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -680,7 +680,7 @@ CREATE TYPE public."ReminderScheduleKind" AS ENUM (
 );
 
 
-ALTER TYPE public."ReminderScheduleKind" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ReminderScheduleKind" OWNER TO ip_migrator;
 
 --
 -- Name: ReminderScheduleStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -693,7 +693,7 @@ CREATE TYPE public."ReminderScheduleStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ReminderScheduleStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ReminderScheduleStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ResultSelectionType; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -708,7 +708,7 @@ CREATE TYPE public."ResultSelectionType" AS ENUM (
 );
 
 
-ALTER TYPE public."ResultSelectionType" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ResultSelectionType" OWNER TO ip_migrator;
 
 --
 -- Name: ResultSnapshotStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -721,7 +721,7 @@ CREATE TYPE public."ResultSnapshotStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ResultSnapshotStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ResultSnapshotStatus" OWNER TO ip_migrator;
 
 --
 -- Name: ScorecardStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -734,7 +734,7 @@ CREATE TYPE public."ScorecardStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."ScorecardStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."ScorecardStatus" OWNER TO ip_migrator;
 
 --
 -- Name: StaffAssignmentStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -746,7 +746,7 @@ CREATE TYPE public."StaffAssignmentStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."StaffAssignmentStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."StaffAssignmentStatus" OWNER TO ip_migrator;
 
 --
 -- Name: StaffInvitationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -761,7 +761,7 @@ CREATE TYPE public."StaffInvitationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."StaffInvitationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."StaffInvitationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: StoredObjectStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -778,7 +778,7 @@ CREATE TYPE public."StoredObjectStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."StoredObjectStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."StoredObjectStatus" OWNER TO ip_migrator;
 
 --
 -- Name: SubmissionAssetKind; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -790,7 +790,7 @@ CREATE TYPE public."SubmissionAssetKind" AS ENUM (
 );
 
 
-ALTER TYPE public."SubmissionAssetKind" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SubmissionAssetKind" OWNER TO ip_migrator;
 
 --
 -- Name: SubmissionStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -803,7 +803,7 @@ CREATE TYPE public."SubmissionStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."SubmissionStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SubmissionStatus" OWNER TO ip_migrator;
 
 --
 -- Name: SupportTicketCategory; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -820,7 +820,7 @@ CREATE TYPE public."SupportTicketCategory" AS ENUM (
 );
 
 
-ALTER TYPE public."SupportTicketCategory" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SupportTicketCategory" OWNER TO ip_migrator;
 
 --
 -- Name: SupportTicketPriority; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -834,7 +834,7 @@ CREATE TYPE public."SupportTicketPriority" AS ENUM (
 );
 
 
-ALTER TYPE public."SupportTicketPriority" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SupportTicketPriority" OWNER TO ip_migrator;
 
 --
 -- Name: SupportTicketStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -850,7 +850,7 @@ CREATE TYPE public."SupportTicketStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."SupportTicketStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SupportTicketStatus" OWNER TO ip_migrator;
 
 --
 -- Name: SuppressionReason; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -863,7 +863,7 @@ CREATE TYPE public."SuppressionReason" AS ENUM (
 );
 
 
-ALTER TYPE public."SuppressionReason" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."SuppressionReason" OWNER TO ip_migrator;
 
 --
 -- Name: TeamInvitationStatus; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -878,7 +878,7 @@ CREATE TYPE public."TeamInvitationStatus" AS ENUM (
 );
 
 
-ALTER TYPE public."TeamInvitationStatus" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."TeamInvitationStatus" OWNER TO ip_migrator;
 
 --
 -- Name: TeamMemberRole; Type: TYPE; Schema: public; Owner: ip_migrator
@@ -890,7 +890,7 @@ CREATE TYPE public."TeamMemberRole" AS ENUM (
 );
 
 
-ALTER TYPE public."TeamMemberRole" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TYPE public."TeamMemberRole" OWNER TO ip_migrator;
 
 --
 -- Name: app_current_actor_id(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -903,7 +903,7 @@ CREATE FUNCTION public.app_current_actor_id() RETURNS uuid
 $$;
 
 
-ALTER FUNCTION public.app_current_actor_id() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_current_actor_id() OWNER TO ip_migrator;
 
 --
 -- Name: app_current_organization_id(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -916,7 +916,7 @@ CREATE FUNCTION public.app_current_organization_id() RETURNS uuid
 $$;
 
 
-ALTER FUNCTION public.app_current_organization_id() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_current_organization_id() OWNER TO ip_migrator;
 
 --
 -- Name: FUNCTION app_current_organization_id(); Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -945,7 +945,7 @@ CREATE FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user
 $$;
 
 
-ALTER FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_find_my_scorecard(uuid, uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -981,7 +981,7 @@ CREATE FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uui
 $$;
 
 
-ALTER FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_active_memberships(uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -999,7 +999,7 @@ CREATE FUNCTION public.app_list_active_memberships(p_user_id uuid) RETURNS TABLE
 $$;
 
 
-ALTER FUNCTION public.app_list_active_memberships(p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_active_memberships(p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_my_challenge_participations(uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1020,7 +1020,7 @@ CREATE FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) RETU
 $$;
 
 
-ALTER FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_my_join_requests(uuid, timestamp with time zone, uuid, integer); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1041,7 +1041,7 @@ CREATE FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at tim
 $$;
 
 
-ALTER FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_my_judge_assignments(uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1063,7 +1063,7 @@ CREATE FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) RETURNS TAB
 $$;
 
 
-ALTER FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_my_staff_invitations(text); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1084,7 +1084,7 @@ CREATE FUNCTION public.app_list_my_staff_invitations(p_email text) RETURNS TABLE
 $$;
 
 
-ALTER FUNCTION public.app_list_my_staff_invitations(p_email text) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_my_staff_invitations(p_email text) OWNER TO ip_migrator;
 
 --
 -- Name: app_list_my_team_invitations(uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1106,7 +1106,7 @@ CREATE FUNCTION public.app_list_my_team_invitations(p_user_id uuid) RETURNS TABL
 $$;
 
 
-ALTER FUNCTION public.app_list_my_team_invitations(p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_list_my_team_invitations(p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_organization_slug_taken(text); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1120,7 +1120,7 @@ CREATE FUNCTION public.app_organization_slug_taken(p_slug text) RETURNS boolean
 $$;
 
 
-ALTER FUNCTION public.app_organization_slug_taken(p_slug text) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_organization_slug_taken(p_slug text) OWNER TO ip_migrator;
 
 --
 -- Name: app_platform_access(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1133,7 +1133,7 @@ CREATE FUNCTION public.app_platform_access() RETURNS boolean
 $$;
 
 
-ALTER FUNCTION public.app_platform_access() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_platform_access() OWNER TO ip_migrator;
 
 --
 -- Name: FUNCTION app_platform_access(); Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -1167,7 +1167,7 @@ CREATE FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_orga
 $$;
 
 
-ALTER FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_resolve_file_context(uuid, uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1209,7 +1209,7 @@ CREATE FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) 
 $$;
 
 
-ALTER FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_resolve_organization_context(uuid, uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1228,7 +1228,7 @@ CREATE FUNCTION public.app_resolve_organization_context(p_organization_id uuid, 
 $$;
 
 
-ALTER FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_secret_lookup_access(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1241,7 +1241,7 @@ CREATE FUNCTION public.app_secret_lookup_access() RETURNS boolean
 $$;
 
 
-ALTER FUNCTION public.app_secret_lookup_access() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_secret_lookup_access() OWNER TO ip_migrator;
 
 --
 -- Name: FUNCTION app_secret_lookup_access(); Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -1265,7 +1265,7 @@ CREATE FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_or
 $$;
 
 
-ALTER FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: app_user_shares_organization(uuid, uuid); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1286,7 +1286,7 @@ CREATE FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_i
 $$;
 
 
-ALTER FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) OWNER TO ip_migrator;
 
 --
 -- Name: create_default_organization_limit(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1304,7 +1304,7 @@ END
 $$;
 
 
-ALTER FUNCTION public.create_default_organization_limit() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.create_default_organization_limit() OWNER TO ip_migrator;
 
 --
 -- Name: enforce_criterion_score_range(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1330,7 +1330,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.enforce_criterion_score_range() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.enforce_criterion_score_range() OWNER TO ip_migrator;
 
 --
 -- Name: enforce_file_asset_object_scope(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1358,7 +1358,7 @@ END
 $$;
 
 
-ALTER FUNCTION public.enforce_file_asset_object_scope() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.enforce_file_asset_object_scope() OWNER TO ip_migrator;
 
 --
 -- Name: enforce_form_scope_chain(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1382,7 +1382,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.enforce_form_scope_chain() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.enforce_form_scope_chain() OWNER TO ip_migrator;
 
 --
 -- Name: enforce_join_request_form_chain(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1404,7 +1404,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.enforce_join_request_form_chain() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.enforce_join_request_form_chain() OWNER TO ip_migrator;
 
 --
 -- Name: enforce_submission_requirement_immutability(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1443,7 +1443,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.enforce_submission_requirement_immutability() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.enforce_submission_requirement_immutability() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_final_submission_version_update(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1461,7 +1461,7 @@ end;
 $$;
 
 
-ALTER FUNCTION public.prevent_final_submission_version_update() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_final_submission_version_update() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_locked_criterion_score_delete(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1479,7 +1479,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.prevent_locked_criterion_score_delete() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_locked_criterion_score_delete() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_locked_scorecard_total_change(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1499,7 +1499,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.prevent_locked_scorecard_total_change() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_locked_scorecard_total_change() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_result_decision_mutation(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1514,7 +1514,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.prevent_result_decision_mutation() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_result_decision_mutation() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_rubric_criterion_mutation_after_judging(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1548,7 +1548,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.prevent_rubric_criterion_mutation_after_judging() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_rubric_criterion_mutation_after_judging() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_stored_object_scope_mutation(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1577,7 +1577,7 @@ END
 $$;
 
 
-ALTER FUNCTION public.prevent_stored_object_scope_mutation() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_stored_object_scope_mutation() OWNER TO ip_migrator;
 
 --
 -- Name: prevent_submitted_form_response_mutation(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1604,7 +1604,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.prevent_submitted_form_response_mutation() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.prevent_submitted_form_response_mutation() OWNER TO ip_migrator;
 
 --
 -- Name: verify_rubric_total_weight(); Type: FUNCTION; Schema: public; Owner: ip_migrator
@@ -1630,7 +1630,7 @@ END;
 $$;
 
 
-ALTER FUNCTION public.verify_rubric_total_weight() OWNER TO ip_migrator;
+-- [neon-compat] ALTER FUNCTION public.verify_rubric_total_weight() OWNER TO ip_migrator;
 
 SET default_tablespace = '';
 
@@ -1657,7 +1657,7 @@ CREATE TABLE public.account (
 );
 
 
-ALTER TABLE public.account OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.account OWNER TO ip_migrator;
 
 --
 -- Name: account_deletion_request; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1683,7 +1683,7 @@ CREATE TABLE public.account_deletion_request (
 );
 
 
-ALTER TABLE public.account_deletion_request OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.account_deletion_request OWNER TO ip_migrator;
 
 --
 -- Name: analytics_daily_rollup; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1717,7 +1717,7 @@ CREATE TABLE public.analytics_daily_rollup (
 ALTER TABLE ONLY public.analytics_daily_rollup FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.analytics_daily_rollup OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.analytics_daily_rollup OWNER TO ip_migrator;
 
 --
 -- Name: announcement; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1746,7 +1746,7 @@ CREATE TABLE public.announcement (
 ALTER TABLE ONLY public.announcement FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.announcement OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.announcement OWNER TO ip_migrator;
 
 --
 -- Name: audit_event; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1772,7 +1772,7 @@ CREATE TABLE public.audit_event (
 ALTER TABLE ONLY public.audit_event FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.audit_event OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.audit_event OWNER TO ip_migrator;
 
 --
 -- Name: TABLE audit_event; Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -1833,7 +1833,7 @@ CREATE TABLE public.challenge (
 ALTER TABLE ONLY public.challenge FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge OWNER TO ip_migrator;
 
 --
 -- Name: challenge_participation; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1861,7 +1861,7 @@ CREATE TABLE public.challenge_participation (
 ALTER TABLE ONLY public.challenge_participation FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_participation OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_participation OWNER TO ip_migrator;
 
 --
 -- Name: challenge_prize; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1883,7 +1883,7 @@ CREATE TABLE public.challenge_prize (
 ALTER TABLE ONLY public.challenge_prize FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_prize OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_prize OWNER TO ip_migrator;
 
 --
 -- Name: challenge_schedule_change; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1905,7 +1905,7 @@ CREATE TABLE public.challenge_schedule_change (
 ALTER TABLE ONLY public.challenge_schedule_change FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_schedule_change OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_schedule_change OWNER TO ip_migrator;
 
 --
 -- Name: challenge_sponsor; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1927,7 +1927,7 @@ CREATE TABLE public.challenge_sponsor (
 ALTER TABLE ONLY public.challenge_sponsor FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_sponsor OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_sponsor OWNER TO ip_migrator;
 
 --
 -- Name: challenge_staff_assignment; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1949,7 +1949,7 @@ CREATE TABLE public.challenge_staff_assignment (
 ALTER TABLE ONLY public.challenge_staff_assignment FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_staff_assignment OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_staff_assignment OWNER TO ip_migrator;
 
 --
 -- Name: challenge_staff_invitation; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -1973,7 +1973,7 @@ CREATE TABLE public.challenge_staff_invitation (
 ALTER TABLE ONLY public.challenge_staff_invitation FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_staff_invitation OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_staff_invitation OWNER TO ip_migrator;
 
 --
 -- Name: challenge_submission_requirement_version; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2010,7 +2010,7 @@ CREATE TABLE public.challenge_submission_requirement_version (
 ALTER TABLE ONLY public.challenge_submission_requirement_version FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_submission_requirement_version OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_submission_requirement_version OWNER TO ip_migrator;
 
 --
 -- Name: challenge_team; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2032,7 +2032,7 @@ CREATE TABLE public.challenge_team (
 ALTER TABLE ONLY public.challenge_team FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_team OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_team OWNER TO ip_migrator;
 
 --
 -- Name: challenge_team_member; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2051,7 +2051,7 @@ CREATE TABLE public.challenge_team_member (
 ALTER TABLE ONLY public.challenge_team_member FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_team_member OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_team_member OWNER TO ip_migrator;
 
 --
 -- Name: challenge_terms_version; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2072,7 +2072,7 @@ CREATE TABLE public.challenge_terms_version (
 ALTER TABLE ONLY public.challenge_terms_version FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_terms_version OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_terms_version OWNER TO ip_migrator;
 
 --
 -- Name: challenge_track; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2093,7 +2093,7 @@ CREATE TABLE public.challenge_track (
 ALTER TABLE ONLY public.challenge_track FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.challenge_track OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.challenge_track OWNER TO ip_migrator;
 
 --
 -- Name: consent_record; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2111,7 +2111,7 @@ CREATE TABLE public.consent_record (
 ALTER TABLE ONLY public.consent_record FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.consent_record OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.consent_record OWNER TO ip_migrator;
 
 --
 -- Name: content_report; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2133,7 +2133,7 @@ CREATE TABLE public.content_report (
 );
 
 
-ALTER TABLE public.content_report OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.content_report OWNER TO ip_migrator;
 
 --
 -- Name: criterion_score; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2154,7 +2154,7 @@ CREATE TABLE public.criterion_score (
 ALTER TABLE ONLY public.criterion_score FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.criterion_score OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.criterion_score OWNER TO ip_migrator;
 
 --
 -- Name: data_export; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2179,7 +2179,7 @@ CREATE TABLE public.data_export (
 ALTER TABLE ONLY public.data_export FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.data_export OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.data_export OWNER TO ip_migrator;
 
 --
 -- Name: email_delivery; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2215,7 +2215,7 @@ CREATE TABLE public.email_delivery (
 ALTER TABLE ONLY public.email_delivery FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.email_delivery OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.email_delivery OWNER TO ip_migrator;
 
 --
 -- Name: TABLE email_delivery; Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -2244,7 +2244,7 @@ CREATE TABLE public.email_delivery_attempt (
 ALTER TABLE ONLY public.email_delivery_attempt FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.email_delivery_attempt OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.email_delivery_attempt OWNER TO ip_migrator;
 
 --
 -- Name: TABLE email_delivery_attempt; Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -2265,7 +2265,7 @@ CREATE TABLE public.email_suppression (
 );
 
 
-ALTER TABLE public.email_suppression OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.email_suppression OWNER TO ip_migrator;
 
 --
 -- Name: faq; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2287,7 +2287,7 @@ CREATE TABLE public.faq (
 ALTER TABLE ONLY public.faq FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.faq OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.faq OWNER TO ip_migrator;
 
 --
 -- Name: file_asset; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2313,7 +2313,7 @@ CREATE TABLE public.file_asset (
 ALTER TABLE ONLY public.file_asset FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.file_asset OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.file_asset OWNER TO ip_migrator;
 
 --
 -- Name: form_definition; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2333,7 +2333,7 @@ CREATE TABLE public.form_definition (
 ALTER TABLE ONLY public.form_definition FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.form_definition OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.form_definition OWNER TO ip_migrator;
 
 --
 -- Name: form_response; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2354,7 +2354,7 @@ CREATE TABLE public.form_response (
 ALTER TABLE ONLY public.form_response FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.form_response OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.form_response OWNER TO ip_migrator;
 
 --
 -- Name: form_version; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2376,7 +2376,7 @@ CREATE TABLE public.form_version (
 ALTER TABLE ONLY public.form_version FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.form_version OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.form_version OWNER TO ip_migrator;
 
 --
 -- Name: idempotency_record; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2400,7 +2400,7 @@ CREATE TABLE public.idempotency_record (
 ALTER TABLE ONLY public.idempotency_record FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.idempotency_record OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.idempotency_record OWNER TO ip_migrator;
 
 --
 -- Name: innovation; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2432,7 +2432,7 @@ CREATE TABLE public.innovation (
 ALTER TABLE ONLY public.innovation FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation OWNER TO ip_migrator;
 
 --
 -- Name: innovation_evidence; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2454,7 +2454,7 @@ CREATE TABLE public.innovation_evidence (
 ALTER TABLE ONLY public.innovation_evidence FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation_evidence OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation_evidence OWNER TO ip_migrator;
 
 --
 -- Name: innovation_metric; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2475,7 +2475,7 @@ CREATE TABLE public.innovation_metric (
 ALTER TABLE ONLY public.innovation_metric FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation_metric OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation_metric OWNER TO ip_migrator;
 
 --
 -- Name: innovation_metric_measurement; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2495,7 +2495,7 @@ CREATE TABLE public.innovation_metric_measurement (
 ALTER TABLE ONLY public.innovation_metric_measurement FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation_metric_measurement OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation_metric_measurement OWNER TO ip_migrator;
 
 --
 -- Name: innovation_milestone; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2517,7 +2517,7 @@ CREATE TABLE public.innovation_milestone (
 ALTER TABLE ONLY public.innovation_milestone FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation_milestone OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation_milestone OWNER TO ip_migrator;
 
 --
 -- Name: innovation_stage_history; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2540,7 +2540,7 @@ CREATE TABLE public.innovation_stage_history (
 ALTER TABLE ONLY public.innovation_stage_history FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.innovation_stage_history OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.innovation_stage_history OWNER TO ip_migrator;
 
 --
 -- Name: integration; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2560,7 +2560,7 @@ CREATE TABLE public.integration (
 ALTER TABLE ONLY public.integration FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.integration OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.integration OWNER TO ip_migrator;
 
 --
 -- Name: integration_delivery; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2589,7 +2589,7 @@ CREATE TABLE public.integration_delivery (
 ALTER TABLE ONLY public.integration_delivery FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.integration_delivery OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.integration_delivery OWNER TO ip_migrator;
 
 --
 -- Name: integration_delivery_attempt; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2612,7 +2612,7 @@ CREATE TABLE public.integration_delivery_attempt (
 ALTER TABLE ONLY public.integration_delivery_attempt FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.integration_delivery_attempt OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.integration_delivery_attempt OWNER TO ip_migrator;
 
 --
 -- Name: judge_assignment; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2633,7 +2633,7 @@ CREATE TABLE public.judge_assignment (
 ALTER TABLE ONLY public.judge_assignment FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.judge_assignment OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.judge_assignment OWNER TO ip_migrator;
 
 --
 -- Name: matchmaking_interest; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2651,7 +2651,7 @@ CREATE TABLE public.matchmaking_interest (
 ALTER TABLE ONLY public.matchmaking_interest FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.matchmaking_interest OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.matchmaking_interest OWNER TO ip_migrator;
 
 --
 -- Name: matchmaking_post; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2676,7 +2676,7 @@ CREATE TABLE public.matchmaking_post (
 ALTER TABLE ONLY public.matchmaking_post FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.matchmaking_post OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.matchmaking_post OWNER TO ip_migrator;
 
 --
 -- Name: media_asset; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2731,7 +2731,7 @@ CREATE TABLE public.media_asset (
 ALTER TABLE ONLY public.media_asset FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.media_asset OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.media_asset OWNER TO ip_migrator;
 
 --
 -- Name: notification; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2753,7 +2753,7 @@ CREATE TABLE public.notification (
 ALTER TABLE ONLY public.notification FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.notification OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.notification OWNER TO ip_migrator;
 
 --
 -- Name: notification_preference; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2768,7 +2768,7 @@ CREATE TABLE public.notification_preference (
 ALTER TABLE ONLY public.notification_preference FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.notification_preference OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.notification_preference OWNER TO ip_migrator;
 
 --
 -- Name: organization; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2799,7 +2799,7 @@ CREATE TABLE public.organization (
 ALTER TABLE ONLY public.organization FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization OWNER TO ip_migrator;
 
 --
 -- Name: organization_application; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2836,7 +2836,7 @@ CREATE TABLE public.organization_application (
 );
 
 
-ALTER TABLE public.organization_application OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_application OWNER TO ip_migrator;
 
 --
 -- Name: TABLE organization_application; Type: COMMENT; Schema: public; Owner: ip_migrator
@@ -2874,7 +2874,7 @@ CREATE TABLE public.organization_invitation (
 ALTER TABLE ONLY public.organization_invitation FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_invitation OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_invitation OWNER TO ip_migrator;
 
 --
 -- Name: organization_join_code; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2905,7 +2905,7 @@ CREATE TABLE public.organization_join_code (
 ALTER TABLE ONLY public.organization_join_code FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_join_code OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_join_code OWNER TO ip_migrator;
 
 --
 -- Name: organization_join_request; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2932,7 +2932,7 @@ CREATE TABLE public.organization_join_request (
 ALTER TABLE ONLY public.organization_join_request FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_join_request OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_join_request OWNER TO ip_migrator;
 
 --
 -- Name: organization_limit; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2954,7 +2954,7 @@ CREATE TABLE public.organization_limit (
 ALTER TABLE ONLY public.organization_limit FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_limit OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_limit OWNER TO ip_migrator;
 
 --
 -- Name: organization_membership; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -2978,7 +2978,7 @@ CREATE TABLE public.organization_membership (
 ALTER TABLE ONLY public.organization_membership FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_membership OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_membership OWNER TO ip_migrator;
 
 --
 -- Name: organization_settings; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3000,7 +3000,7 @@ CREATE TABLE public.organization_settings (
 ALTER TABLE ONLY public.organization_settings FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.organization_settings OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.organization_settings OWNER TO ip_migrator;
 
 --
 -- Name: outbox_event; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3031,7 +3031,7 @@ CREATE TABLE public.outbox_event (
 ALTER TABLE ONLY public.outbox_event FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.outbox_event OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.outbox_event OWNER TO ip_migrator;
 
 --
 -- Name: platform_role_assignment; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3049,7 +3049,7 @@ CREATE TABLE public.platform_role_assignment (
 );
 
 
-ALTER TABLE public.platform_role_assignment OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.platform_role_assignment OWNER TO ip_migrator;
 
 --
 -- Name: public_announcement_view; Type: VIEW; Schema: public; Owner: ip_public_views
@@ -3072,7 +3072,7 @@ CREATE VIEW public.public_announcement_view WITH (security_barrier='true', secur
   WHERE ((a.is_published = true) AND (c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_announcement_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_announcement_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_announcement_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3102,7 +3102,7 @@ CREATE VIEW public.public_challenge_track_view WITH (security_barrier='true', se
   WHERE ((c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_challenge_track_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_challenge_track_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_challenge_track_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3145,7 +3145,7 @@ CREATE VIEW public.public_challenge_view WITH (security_barrier='true', security
   WHERE ((c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_challenge_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_challenge_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_challenge_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3174,7 +3174,7 @@ CREATE VIEW public.public_faq_view WITH (security_barrier='true', security_invok
   WHERE ((f.is_published = true) AND (c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_faq_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_faq_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_faq_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3205,7 +3205,7 @@ CREATE VIEW public.public_innovation_view WITH (security_barrier='true', securit
   WHERE ((i.public_visible = true) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_innovation_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_innovation_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_innovation_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3233,7 +3233,7 @@ CREATE VIEW public.public_organization_view WITH (security_barrier='true', secur
   WHERE ((status = 'ACTIVE'::public."OrganizationStatus") AND (visibility = 'PUBLIC'::public."OrganizationVisibility"));
 
 
-ALTER VIEW public.public_organization_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_organization_view OWNER TO ip_public_views;
 
 --
 -- Name: VIEW public_organization_view; Type: COMMENT; Schema: public; Owner: ip_public_views
@@ -3266,7 +3266,7 @@ CREATE TABLE public.submission (
 ALTER TABLE ONLY public.submission FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.submission OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.submission OWNER TO ip_migrator;
 
 --
 -- Name: submission_technology; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3285,7 +3285,7 @@ CREATE TABLE public.submission_technology (
 ALTER TABLE ONLY public.submission_technology FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.submission_technology OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.submission_technology OWNER TO ip_migrator;
 
 --
 -- Name: submission_version; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3317,7 +3317,7 @@ CREATE TABLE public.submission_version (
 ALTER TABLE ONLY public.submission_version FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.submission_version OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.submission_version OWNER TO ip_migrator;
 
 --
 -- Name: public_project_view; Type: VIEW; Schema: public; Owner: ip_public_views
@@ -3353,7 +3353,7 @@ CREATE VIEW public.public_project_view WITH (security_barrier='true', security_i
   WHERE ((v.publication_consent = true) AND (s.disqualified_at IS NULL) AND (c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_project_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_project_view OWNER TO ip_public_views;
 
 --
 -- Name: result_snapshot; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3376,7 +3376,7 @@ CREATE TABLE public.result_snapshot (
 ALTER TABLE ONLY public.result_snapshot FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.result_snapshot OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.result_snapshot OWNER TO ip_migrator;
 
 --
 -- Name: submission_result; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3404,7 +3404,7 @@ CREATE TABLE public.submission_result (
 ALTER TABLE ONLY public.submission_result FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.submission_result OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.submission_result OWNER TO ip_migrator;
 
 --
 -- Name: public_submission_result_view; Type: VIEW; Schema: public; Owner: ip_public_views
@@ -3429,7 +3429,7 @@ CREATE VIEW public.public_submission_result_view WITH (security_barrier='true', 
   WHERE ((rs.status = 'PUBLISHED'::public."ResultSnapshotStatus") AND (c.results_published_at IS NOT NULL) AND (c.visibility = 'PUBLIC'::public."ChallengeVisibility") AND (c.published_at IS NOT NULL) AND (c.moderation_hidden_at IS NULL) AND (o.status = 'ACTIVE'::public."OrganizationStatus"));
 
 
-ALTER VIEW public.public_submission_result_view OWNER TO ip_public_views;
+-- [neon-compat] ALTER VIEW public.public_submission_result_view OWNER TO ip_public_views;
 
 --
 -- Name: reminder_schedule; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3460,7 +3460,7 @@ CREATE TABLE public.reminder_schedule (
 ALTER TABLE ONLY public.reminder_schedule FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.reminder_schedule OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.reminder_schedule OWNER TO ip_migrator;
 
 --
 -- Name: rubric; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3478,7 +3478,7 @@ CREATE TABLE public.rubric (
 ALTER TABLE ONLY public.rubric FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.rubric OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.rubric OWNER TO ip_migrator;
 
 --
 -- Name: rubric_criterion; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3505,7 +3505,7 @@ CREATE TABLE public.rubric_criterion (
 ALTER TABLE ONLY public.rubric_criterion FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.rubric_criterion OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.rubric_criterion OWNER TO ip_migrator;
 
 --
 -- Name: rubric_version; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3530,7 +3530,7 @@ CREATE TABLE public.rubric_version (
 ALTER TABLE ONLY public.rubric_version FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.rubric_version OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.rubric_version OWNER TO ip_migrator;
 
 --
 -- Name: scorecard; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3556,7 +3556,7 @@ CREATE TABLE public.scorecard (
 ALTER TABLE ONLY public.scorecard FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.scorecard OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.scorecard OWNER TO ip_migrator;
 
 --
 -- Name: session; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3576,7 +3576,7 @@ CREATE TABLE public.session (
 );
 
 
-ALTER TABLE public.session OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.session OWNER TO ip_migrator;
 
 --
 -- Name: skill; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3592,7 +3592,7 @@ CREATE TABLE public.skill (
 );
 
 
-ALTER TABLE public.skill OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.skill OWNER TO ip_migrator;
 
 --
 -- Name: stored_object; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3631,7 +3631,7 @@ CREATE TABLE public.stored_object (
 ALTER TABLE ONLY public.stored_object FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.stored_object OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.stored_object OWNER TO ip_migrator;
 
 --
 -- Name: submission_asset; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3654,7 +3654,7 @@ CREATE TABLE public.submission_asset (
 ALTER TABLE ONLY public.submission_asset FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.submission_asset OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.submission_asset OWNER TO ip_migrator;
 
 --
 -- Name: support_ticket; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3677,7 +3677,7 @@ CREATE TABLE public.support_ticket (
 );
 
 
-ALTER TABLE public.support_ticket OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.support_ticket OWNER TO ip_migrator;
 
 --
 -- Name: support_ticket_comment; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3692,7 +3692,7 @@ CREATE TABLE public.support_ticket_comment (
 );
 
 
-ALTER TABLE public.support_ticket_comment OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.support_ticket_comment OWNER TO ip_migrator;
 
 --
 -- Name: support_ticket_internal_note; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3707,7 +3707,7 @@ CREATE TABLE public.support_ticket_internal_note (
 );
 
 
-ALTER TABLE public.support_ticket_internal_note OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.support_ticket_internal_note OWNER TO ip_migrator;
 
 --
 -- Name: team_invitation; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3730,7 +3730,7 @@ CREATE TABLE public.team_invitation (
 ALTER TABLE ONLY public.team_invitation FORCE ROW LEVEL SECURITY;
 
 
-ALTER TABLE public.team_invitation OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.team_invitation OWNER TO ip_migrator;
 
 --
 -- Name: technology_tag; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3746,7 +3746,7 @@ CREATE TABLE public.technology_tag (
 );
 
 
-ALTER TABLE public.technology_tag OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.technology_tag OWNER TO ip_migrator;
 
 --
 -- Name: two_factor; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3764,7 +3764,7 @@ CREATE TABLE public.two_factor (
 );
 
 
-ALTER TABLE public.two_factor OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.two_factor OWNER TO ip_migrator;
 
 --
 -- Name: user; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3783,7 +3783,7 @@ CREATE TABLE public."user" (
 );
 
 
-ALTER TABLE public."user" OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public."user" OWNER TO ip_migrator;
 
 --
 -- Name: user_profile; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3805,7 +3805,7 @@ CREATE TABLE public.user_profile (
 );
 
 
-ALTER TABLE public.user_profile OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.user_profile OWNER TO ip_migrator;
 
 --
 -- Name: user_skill; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3821,7 +3821,7 @@ CREATE TABLE public.user_skill (
 );
 
 
-ALTER TABLE public.user_skill OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.user_skill OWNER TO ip_migrator;
 
 --
 -- Name: verification; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3837,7 +3837,7 @@ CREATE TABLE public.verification (
 );
 
 
-ALTER TABLE public.verification OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.verification OWNER TO ip_migrator;
 
 --
 -- Name: webhook_event; Type: TABLE; Schema: public; Owner: ip_migrator
@@ -3855,7 +3855,7 @@ CREATE TABLE public.webhook_event (
 );
 
 
-ALTER TABLE public.webhook_event OWNER TO ip_migrator;
+-- [neon-compat] ALTER TABLE public.webhook_event OWNER TO ip_migrator;
 
 --
 -- Name: account_deletion_request account_deletion_request_pkey; Type: CONSTRAINT; Schema: public; Owner: ip_migrator
@@ -7249,7 +7249,7 @@ BEGIN
 END
 $$;
 
-REVOKE ALL ON FUNCTION public.prevent_media_asset_scope_mutation() FROM PUBLIC;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.prevent_media_asset_scope_mutation() FROM PUBLIC;
 
 CREATE TRIGGER media_asset_scope_immutable
 BEFORE UPDATE OF purpose, delivery_type, organization_id, challenge_id, owner_user_id, resource_type, resource_id, cloudinary_public_id
@@ -7305,7 +7305,7 @@ BEGIN
 END
 $$;
 
-REVOKE ALL ON FUNCTION public.validate_media_asset_resource_scope() FROM PUBLIC;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.validate_media_asset_resource_scope() FROM PUBLIC;
 
 CREATE TRIGGER media_asset_resource_scope_valid
 BEFORE INSERT ON public.media_asset
@@ -7402,7 +7402,7 @@ BEGIN
 END
 $$;
 
-REVOKE ALL ON FUNCTION public.validate_media_asset_attachment() FROM PUBLIC;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.validate_media_asset_attachment() FROM PUBLIC;
 
 CREATE TRIGGER user_profile_media_attachment_valid
 BEFORE INSERT OR UPDATE OF avatar_asset_id ON public.user_profile
@@ -7449,8 +7449,8 @@ AS $$
   LIMIT 1
 $$;
 
-REVOKE ALL ON FUNCTION public.app_resolve_media_asset_context(uuid, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.app_resolve_media_asset_context(uuid, uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_resolve_media_asset_context(uuid, uuid) FROM PUBLIC;
+-- [neon-compat] GRANT EXECUTE ON FUNCTION public.app_resolve_media_asset_context(uuid, uuid) TO ip_app;
 COMMENT ON FUNCTION public.app_resolve_media_asset_context(uuid, uuid) IS
   'Exact-ID media scope resolver. Returns no provider metadata and cannot enumerate rows.';
 
@@ -7549,8 +7549,8 @@ AS $$
   LIMIT 1
 $$;
 
-REVOKE ALL ON FUNCTION public.app_resolve_public_media_delivery(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.app_resolve_public_media_delivery(uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_resolve_public_media_delivery(uuid) FROM PUBLIC;
+-- [neon-compat] GRANT EXECUTE ON FUNCTION public.app_resolve_public_media_delivery(uuid) TO ip_app;
 COMMENT ON FUNCTION public.app_resolve_public_media_delivery(uuid) IS
   'Exact-ID public media resolver. Returns delivery metadata only for a currently attached, public-eligible resource.';
 
@@ -8372,886 +8372,886 @@ CREATE POLICY team_invitation_tenant_isolation ON public.team_invitation USING (
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: ip_migrator
 --
 
-GRANT USAGE ON SCHEMA public TO ip_app;
-GRANT USAGE ON SCHEMA public TO ip_public_views;
-REVOKE CREATE ON SCHEMA public FROM ip_public_views;
+-- [neon-compat] GRANT USAGE ON SCHEMA public TO ip_app;
+-- [neon-compat] GRANT USAGE ON SCHEMA public TO ip_public_views;
+-- [neon-compat] REVOKE CREATE ON SCHEMA public FROM ip_public_views;
 
 -- The no-login view owner receives only the base-table reads its eight public
 -- projections require. It has no access to identity, audit, delivery, file,
 -- integration, idempotency, or other private tables.
-GRANT SELECT ON TABLE public.announcement TO ip_public_views;
-GRANT SELECT ON TABLE public.challenge TO ip_public_views;
-GRANT SELECT ON TABLE public.challenge_team TO ip_public_views;
-GRANT SELECT ON TABLE public.challenge_track TO ip_public_views;
-GRANT SELECT ON TABLE public.faq TO ip_public_views;
-GRANT SELECT ON TABLE public.innovation TO ip_public_views;
-GRANT SELECT ON TABLE public.organization TO ip_public_views;
-GRANT SELECT ON TABLE public.result_snapshot TO ip_public_views;
-GRANT SELECT ON TABLE public.submission TO ip_public_views;
-GRANT SELECT ON TABLE public.submission_result TO ip_public_views;
-GRANT SELECT ON TABLE public.submission_technology TO ip_public_views;
-GRANT SELECT ON TABLE public.submission_version TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.announcement TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.challenge TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.challenge_team TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.challenge_track TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.faq TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.innovation TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.organization TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.result_snapshot TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.submission TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.submission_result TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.submission_technology TO ip_public_views;
+-- [neon-compat] GRANT SELECT ON TABLE public.submission_version TO ip_public_views;
 
 
 --
 -- Name: FUNCTION app_current_actor_id(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.app_current_actor_id() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_current_actor_id() TO ip_app;
 
 
 --
 -- Name: FUNCTION app_current_organization_id(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.app_current_organization_id() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_current_organization_id() TO ip_app;
 
 
 --
 -- Name: FUNCTION app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_find_my_judge_assignment(p_assignment_id uuid, p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_find_my_scorecard(p_assignment_id uuid, p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_active_memberships(p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_active_memberships(p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_active_memberships(p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_active_memberships(p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_active_memberships(p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_my_challenge_participations(p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_my_challenge_participations(p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_my_join_requests(p_user_id uuid, p_cursor_at timestamp with time zone, p_cursor_id uuid, p_limit integer) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_my_judge_assignments(p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_my_judge_assignments(p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_my_staff_invitations(p_email text); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_my_staff_invitations(p_email text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_my_staff_invitations(p_email text) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_my_staff_invitations(p_email text) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_my_staff_invitations(p_email text) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_list_my_team_invitations(p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_list_my_team_invitations(p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_list_my_team_invitations(p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_list_my_team_invitations(p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_list_my_team_invitations(p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_organization_slug_taken(p_slug text); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_organization_slug_taken(p_slug text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_organization_slug_taken(p_slug text) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_organization_slug_taken(p_slug text) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_organization_slug_taken(p_slug text) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_platform_access(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.app_platform_access() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_platform_access() TO ip_app;
 
 
 --
 -- Name: FUNCTION app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_resolve_challenge_context(p_challenge_id uuid, p_organization_id uuid, p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_resolve_file_context(p_file_id uuid, p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_resolve_file_context(p_file_id uuid, p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_resolve_organization_context(p_organization_id uuid, p_user_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_resolve_organization_context(p_organization_id uuid, p_user_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_secret_lookup_access(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.app_secret_lookup_access() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_secret_lookup_access() TO ip_app;
 
 
 --
 -- Name: FUNCTION app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_user_has_organization_membership(p_user_id uuid, p_organization_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION app_user_shares_organization(p_viewer_id uuid, p_target_id uuid); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-REVOKE ALL ON FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) TO ip_app;
+-- [neon-compat] REVOKE ALL ON FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) FROM PUBLIC;
+-- [neon-compat] GRANT ALL ON FUNCTION public.app_user_shares_organization(p_viewer_id uuid, p_target_id uuid) TO ip_app;
 
 
 --
 -- Name: FUNCTION create_default_organization_limit(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.create_default_organization_limit() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.create_default_organization_limit() TO ip_app;
 
 
 --
 -- Name: FUNCTION enforce_criterion_score_range(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.enforce_criterion_score_range() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.enforce_criterion_score_range() TO ip_app;
 
 
 --
 -- Name: FUNCTION enforce_file_asset_object_scope(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.enforce_file_asset_object_scope() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.enforce_file_asset_object_scope() TO ip_app;
 
 
 --
 -- Name: FUNCTION enforce_form_scope_chain(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.enforce_form_scope_chain() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.enforce_form_scope_chain() TO ip_app;
 
 
 --
 -- Name: FUNCTION enforce_join_request_form_chain(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.enforce_join_request_form_chain() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.enforce_join_request_form_chain() TO ip_app;
 
 
 --
 -- Name: FUNCTION enforce_submission_requirement_immutability(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.enforce_submission_requirement_immutability() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.enforce_submission_requirement_immutability() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_final_submission_version_update(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_final_submission_version_update() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_final_submission_version_update() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_locked_criterion_score_delete(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_locked_criterion_score_delete() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_locked_criterion_score_delete() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_locked_scorecard_total_change(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_locked_scorecard_total_change() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_locked_scorecard_total_change() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_result_decision_mutation(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_result_decision_mutation() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_result_decision_mutation() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_rubric_criterion_mutation_after_judging(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_rubric_criterion_mutation_after_judging() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_rubric_criterion_mutation_after_judging() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_stored_object_scope_mutation(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_stored_object_scope_mutation() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_stored_object_scope_mutation() TO ip_app;
 
 
 --
 -- Name: FUNCTION prevent_submitted_form_response_mutation(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.prevent_submitted_form_response_mutation() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.prevent_submitted_form_response_mutation() TO ip_app;
 
 
 --
 -- Name: FUNCTION verify_rubric_total_weight(); Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT ALL ON FUNCTION public.verify_rubric_total_weight() TO ip_app;
+-- [neon-compat] GRANT ALL ON FUNCTION public.verify_rubric_total_weight() TO ip_app;
 
 
 --
 -- Name: TABLE account; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO ip_app;
 
 
 --
 -- Name: TABLE account_deletion_request; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_deletion_request TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account_deletion_request TO ip_app;
 
 
 --
 -- Name: TABLE analytics_daily_rollup; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.analytics_daily_rollup TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.analytics_daily_rollup TO ip_app;
 
 
 --
 -- Name: TABLE announcement; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.announcement TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.announcement TO ip_app;
 
 
 --
 -- Name: TABLE audit_event; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT ON TABLE public.audit_event TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT ON TABLE public.audit_event TO ip_app;
 
 
 --
 -- Name: TABLE challenge; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge TO ip_app;
 
 
 --
 -- Name: TABLE challenge_participation; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_participation TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_participation TO ip_app;
 
 
 --
 -- Name: TABLE challenge_prize; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_prize TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_prize TO ip_app;
 
 
 --
 -- Name: TABLE challenge_schedule_change; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_schedule_change TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_schedule_change TO ip_app;
 
 
 --
 -- Name: TABLE challenge_sponsor; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_sponsor TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_sponsor TO ip_app;
 
 
 --
 -- Name: TABLE challenge_staff_assignment; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_staff_assignment TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_staff_assignment TO ip_app;
 
 
 --
 -- Name: TABLE challenge_staff_invitation; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_staff_invitation TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_staff_invitation TO ip_app;
 
 
 --
 -- Name: TABLE challenge_submission_requirement_version; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,UPDATE ON TABLE public.challenge_submission_requirement_version TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,UPDATE ON TABLE public.challenge_submission_requirement_version TO ip_app;
 
 
 --
 -- Name: TABLE challenge_team; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_team TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_team TO ip_app;
 
 
 --
 -- Name: TABLE challenge_team_member; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_team_member TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_team_member TO ip_app;
 
 
 --
 -- Name: TABLE challenge_terms_version; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_terms_version TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_terms_version TO ip_app;
 
 
 --
 -- Name: TABLE challenge_track; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_track TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_track TO ip_app;
 
 
 --
 -- Name: TABLE consent_record; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.consent_record TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.consent_record TO ip_app;
 
 
 --
 -- Name: TABLE content_report; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.content_report TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.content_report TO ip_app;
 
 
 --
 -- Name: TABLE criterion_score; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.criterion_score TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.criterion_score TO ip_app;
 
 
 --
 -- Name: TABLE data_export; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.data_export TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.data_export TO ip_app;
 
 
 --
 -- Name: TABLE email_delivery; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,UPDATE ON TABLE public.email_delivery TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,UPDATE ON TABLE public.email_delivery TO ip_app;
 
 
 --
 -- Name: TABLE email_delivery_attempt; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,UPDATE ON TABLE public.email_delivery_attempt TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,UPDATE ON TABLE public.email_delivery_attempt TO ip_app;
 
 
 --
 -- Name: TABLE email_suppression; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.email_suppression TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.email_suppression TO ip_app;
 
 
 --
 -- Name: TABLE faq; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.faq TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.faq TO ip_app;
 
 
 --
 -- Name: TABLE file_asset; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.file_asset TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.file_asset TO ip_app;
 
 
 --
 -- Name: TABLE form_definition; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_definition TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_definition TO ip_app;
 
 
 --
 -- Name: TABLE form_response; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_response TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_response TO ip_app;
 
 
 --
 -- Name: TABLE form_version; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_version TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.form_version TO ip_app;
 
 
 --
 -- Name: TABLE idempotency_record; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.idempotency_record TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.idempotency_record TO ip_app;
 
 
 --
 -- Name: TABLE innovation; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation TO ip_app;
 
 
 --
 -- Name: TABLE innovation_evidence; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_evidence TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_evidence TO ip_app;
 
 
 --
 -- Name: TABLE innovation_metric; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_metric TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_metric TO ip_app;
 
 
 --
 -- Name: TABLE innovation_metric_measurement; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_metric_measurement TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_metric_measurement TO ip_app;
 
 
 --
 -- Name: TABLE innovation_milestone; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_milestone TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_milestone TO ip_app;
 
 
 --
 -- Name: TABLE innovation_stage_history; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_stage_history TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.innovation_stage_history TO ip_app;
 
 
 --
 -- Name: TABLE integration; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.integration TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.integration TO ip_app;
 
 
 --
 -- Name: TABLE integration_delivery; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.integration_delivery TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.integration_delivery TO ip_app;
 
 
 --
 -- Name: TABLE integration_delivery_attempt; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,UPDATE ON TABLE public.integration_delivery_attempt TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,UPDATE ON TABLE public.integration_delivery_attempt TO ip_app;
 
 
 --
 -- Name: TABLE judge_assignment; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.judge_assignment TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.judge_assignment TO ip_app;
 
 
 --
 -- Name: TABLE matchmaking_interest; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.matchmaking_interest TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.matchmaking_interest TO ip_app;
 
 
 --
 -- Name: TABLE matchmaking_post; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.matchmaking_post TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.matchmaking_post TO ip_app;
 
 
 --
 -- Name: TABLE media_asset; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.media_asset TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.media_asset TO ip_app;
 
 
 --
 -- Name: TABLE notification; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.notification TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.notification TO ip_app;
 
 
 --
 -- Name: TABLE notification_preference; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.notification_preference TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.notification_preference TO ip_app;
 
 
 --
 -- Name: TABLE organization; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization TO ip_app;
 
 
 --
 -- Name: TABLE organization_application; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_application TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_application TO ip_app;
 
 
 --
 -- Name: TABLE organization_invitation; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_invitation TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_invitation TO ip_app;
 
 
 --
 -- Name: TABLE organization_join_code; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_join_code TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_join_code TO ip_app;
 
 
 --
 -- Name: TABLE organization_join_request; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_join_request TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_join_request TO ip_app;
 
 
 --
 -- Name: TABLE organization_limit; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_limit TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_limit TO ip_app;
 
 
 --
 -- Name: TABLE organization_membership; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_membership TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_membership TO ip_app;
 
 
 --
 -- Name: TABLE organization_settings; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_settings TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.organization_settings TO ip_app;
 
 
 --
 -- Name: TABLE outbox_event; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.outbox_event TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.outbox_event TO ip_app;
 
 
 --
 -- Name: TABLE platform_role_assignment; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.platform_role_assignment TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.platform_role_assignment TO ip_app;
 
 
 --
 -- Name: TABLE public_announcement_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_announcement_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_announcement_view TO ip_app;
 
 
 --
 -- Name: TABLE public_challenge_track_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_challenge_track_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_challenge_track_view TO ip_app;
 
 
 --
 -- Name: TABLE public_challenge_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_challenge_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_challenge_view TO ip_app;
 
 
 --
 -- Name: TABLE public_faq_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_faq_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_faq_view TO ip_app;
 
 
 --
 -- Name: TABLE public_innovation_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_innovation_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_innovation_view TO ip_app;
 
 
 --
 -- Name: TABLE public_organization_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_organization_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_organization_view TO ip_app;
 
 
 --
 -- Name: TABLE submission; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission TO ip_app;
 
 
 --
 -- Name: TABLE submission_technology; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_technology TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_technology TO ip_app;
 
 
 --
 -- Name: TABLE submission_version; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_version TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_version TO ip_app;
 
 
 --
 -- Name: TABLE public_project_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_project_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_project_view TO ip_app;
 
 
 --
 -- Name: TABLE result_snapshot; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,UPDATE ON TABLE public.result_snapshot TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,UPDATE ON TABLE public.result_snapshot TO ip_app;
 
 
 --
 -- Name: TABLE submission_result; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_result TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_result TO ip_app;
 
 
 --
 -- Name: TABLE public_submission_result_view; Type: ACL; Schema: public; Owner: ip_public_views
 --
 
-GRANT SELECT ON TABLE public.public_submission_result_view TO ip_app;
+-- [neon-compat] GRANT SELECT ON TABLE public.public_submission_result_view TO ip_app;
 
 
 --
 -- Name: TABLE reminder_schedule; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.reminder_schedule TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.reminder_schedule TO ip_app;
 
 
 --
 -- Name: TABLE rubric; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric TO ip_app;
 
 
 --
 -- Name: TABLE rubric_criterion; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric_criterion TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric_criterion TO ip_app;
 
 
 --
 -- Name: TABLE rubric_version; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric_version TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rubric_version TO ip_app;
 
 
 --
 -- Name: TABLE scorecard; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.scorecard TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.scorecard TO ip_app;
 
 
 --
 -- Name: TABLE session; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO ip_app;
 
 
 --
 -- Name: TABLE skill; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.skill TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.skill TO ip_app;
 
 
 --
 -- Name: TABLE stored_object; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.stored_object TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.stored_object TO ip_app;
 
 
 --
 -- Name: TABLE submission_asset; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_asset TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.submission_asset TO ip_app;
 
 
 --
 -- Name: TABLE support_ticket; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket TO ip_app;
 
 
 --
 -- Name: TABLE support_ticket_comment; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket_comment TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket_comment TO ip_app;
 
 
 --
 -- Name: TABLE support_ticket_internal_note; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket_internal_note TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_ticket_internal_note TO ip_app;
 
 
 --
 -- Name: TABLE team_invitation; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.team_invitation TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.team_invitation TO ip_app;
 
 
 --
 -- Name: TABLE technology_tag; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.technology_tag TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.technology_tag TO ip_app;
 
 
 --
 -- Name: TABLE two_factor; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO ip_app;
 
 
 --
 -- Name: TABLE "user"; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO ip_app;
 
 
 --
 -- Name: TABLE user_profile; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_profile TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_profile TO ip_app;
 
 
 --
 -- Name: TABLE user_skill; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_skill TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_skill TO ip_app;
 
 
 --
 -- Name: TABLE verification; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO ip_app;
 
 
 --
 -- Name: TABLE webhook_event; Type: ACL; Schema: public; Owner: ip_migrator
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.webhook_event TO ip_app;
+-- [neon-compat] GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.webhook_event TO ip_app;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: ip_migrator
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE ip_migrator IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO ip_app;
+-- [neon-compat] ALTER DEFAULT PRIVILEGES FOR ROLE ip_migrator IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO ip_app;
 
 
 --
