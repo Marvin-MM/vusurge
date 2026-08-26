@@ -131,7 +131,7 @@ jobs:
       QUEUE_REDIS_URL: redis://127.0.0.1:6380
       # CI-only values. Never reused anywhere else.
       BETTER_AUTH_SECRET: ci_better_auth_secret_at_least_32_chars
-      # ci_encryption_key_exactly_32byte = exactly 32 bytes (verify: echo -n "..." | base64 -d | wc -c)
+      # Base64 encoding of 32 bytes ("ci_encryption_key_exactly_32byte")
       ENCRYPTION_MASTER_KEY: Y2lfZW5jcnlwdGlvbl9rZXlfZXhhY3RseV8zMmJ5dGU=
       EMAIL_ENABLED: 'false'
       CLOUDINARY_ENABLED: 'false'
