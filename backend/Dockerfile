@@ -42,6 +42,11 @@ COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --production --omit peer --ignore-scripts
 
+# Because --ignore-scripts suppresses all postinstall steps, we must manually
+# trigger the Prisma engines download. Without this, the schema-engine binary
+# is missing and `prisma migrate deploy` crashes in the initContainer.
+RUN bun run ./node_modules/@prisma/engines/scripts/postinstall.js
+
 # ---------------------------------------------------------------------------
 # Build-time verification
 # ---------------------------------------------------------------------------
