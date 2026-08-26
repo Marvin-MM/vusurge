@@ -91,6 +91,7 @@ export interface InfrastructureOptions {
   readonly imageProvider?: ImageProvider
   readonly integrationWebhookTransport?: IntegrationWebhookTransport
   readonly objectStorage?: ObjectStorage
+  readonly fileScanner?: FileScanner
 }
 
 export function buildInfrastructure(options: InfrastructureOptions = {}): Infrastructure {
@@ -130,7 +131,7 @@ export function buildInfrastructure(options: InfrastructureOptions = {}): Infras
   const integrationWebhookTransport =
     options.integrationWebhookTransport ?? createIntegrationWebhookTransport()
   const objectStorage = options.objectStorage ?? createObjectStorage(config, logger)
-  const fileScanner = createFileScanner(config)
+  const fileScanner = options.fileScanner ?? createFileScanner(config)
   const auth = createBetterAuth(config, database, transactions, emailDeliveries, logger)
 
   return {

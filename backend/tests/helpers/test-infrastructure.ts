@@ -5,6 +5,7 @@ import {
 } from '../../src/container'
 import { createLogger } from '../../src/shared/logging'
 import { createFakeEmailProvider, type FakeEmailProvider } from './fake-email-provider'
+import { createFakeFileScanner, type FakeFileScanner } from './fake-file-scanner'
 import {
   createFakeIntegrationWebhookTransport,
   type FakeIntegrationWebhookTransport,
@@ -27,6 +28,7 @@ export interface TestInfrastructure extends Infrastructure {
   readonly fakeEmail: FakeEmailProvider
   readonly fakeIntegrationWebhook: FakeIntegrationWebhookTransport
   readonly fakeObjectStorage: FakeObjectStorage
+  readonly fakeFileScanner: FakeFileScanner
 }
 
 interface TestInfrastructureOptions {
@@ -43,12 +45,14 @@ export async function createTestInfrastructure(
   const fakeEmail = createFakeEmailProvider()
   const fakeIntegrationWebhook = createFakeIntegrationWebhookTransport()
   const fakeObjectStorage = createFakeObjectStorage()
+  const fakeFileScanner = createFakeFileScanner()
   const infrastructure = buildInfrastructure({
     config,
     logger,
     emailProvider: fakeEmail,
     integrationWebhookTransport: fakeIntegrationWebhook,
     objectStorage: fakeObjectStorage,
+    fileScanner: fakeFileScanner,
   })
 
   if (options.connectDependencies !== false) {
@@ -64,7 +68,9 @@ export async function createTestInfrastructure(
     fakeEmail,
     fakeIntegrationWebhook,
     fakeObjectStorage,
+    fakeFileScanner,
     async dispose(): Promise<void> {
+      fakeObjectStorage.dispose()
       if (options.connectDependencies === false) {
         await infrastructure.queues.close()
         infrastructure.queueRedis.disconnect(false)

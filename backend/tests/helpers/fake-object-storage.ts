@@ -1,3 +1,4 @@
+import type { Server } from 'bun'
 import type { ObjectStorage } from '../../src/shared/storage'
 
 interface StoredObject {
@@ -7,18 +8,74 @@ interface StoredObject {
 }
 
 /**
- * An in-memory object storage provider for integration tests.
+ * An in-memory object storage provider with a lightweight local HTTP server
+ * for presigned upload and download testing.
  *
- * Implements the ObjectStorage interface using an in-memory Map so integration
- * tests do not require an active MinIO or AWS S3 instance.
+ * Implements the ObjectStorage interface so integration and E2E tests can
+ * exercise file uploads, downloads, malware scans, and data exports without
+ * requiring a live MinIO / AWS S3 deployment.
  */
 export interface FakeObjectStorage extends ObjectStorage {
   readonly objects: Map<string, StoredObject>
   clear(): void
+  dispose(): void
 }
 
 export function createFakeObjectStorage(): FakeObjectStorage {
   const objects = new Map<string, StoredObject>()
+
+  const server: Server<unknown> = Bun.serve({
+    port: 0,
+    async fetch(req) {
+      const url = new URL(req.url)
+      const key = decodeURIComponent(url.pathname.replace(/^\/objects\//, ''))
+
+      if (req.method === 'PUT') {
+        const body = new Uint8Array(await req.arrayBuffer())
+        const contentType = req.headers.get('content-type') ?? 'application/octet-stream'
+        const metadata: Record<string, string> = {}
+        for (const [headerKey, headerVal] of req.headers.entries()) {
+          if (headerKey.startsWith('x-amz-meta-')) {
+            metadata[headerKey.replace('x-amz-meta-', '')] = headerVal
+          }
+        }
+        objects.set(key, { body, contentType, metadata })
+        return new Response(null, { status: 200 })
+      }
+
+      if (req.method === 'GET' || req.method === 'HEAD') {
+        const stored = objects.get(key)
+        if (stored === undefined) {
+          return new Response('Not Found', { status: 404 })
+        }
+        if (req.method === 'HEAD') {
+          return new Response(null, {
+            status: 200,
+            headers: {
+              'content-type': stored.contentType,
+              'content-length': String(stored.body.byteLength),
+            },
+          })
+        }
+        return new Response(stored.body, {
+          status: 200,
+          headers: {
+            'content-type': stored.contentType,
+            'content-length': String(stored.body.byteLength),
+          },
+        })
+      }
+
+      if (req.method === 'DELETE') {
+        objects.delete(key)
+        return new Response(null, { status: 204 })
+      }
+
+      return new Response('Method Not Allowed', { status: 405 })
+    },
+  })
+
+  const baseUrl = `http://127.0.0.1:${server.port}/objects`
 
   return {
     objects,
@@ -50,7 +107,7 @@ export function createFakeObjectStorage(): FakeObjectStorage {
         ),
       }
       return {
-        url: `https://fake-s3.local/upload/${encodeURIComponent(key)}`,
+        url: `${baseUrl}/${encodeURIComponent(key)}`,
         requiredHeaders,
       }
     },
@@ -80,7 +137,7 @@ export function createFakeObjectStorage(): FakeObjectStorage {
     },
 
     async presignDownloadUrl(key: string, _ttlSeconds: number): Promise<string> {
-      return `https://fake-s3.local/download/${encodeURIComponent(key)}`
+      return `${baseUrl}/${encodeURIComponent(key)}`
     },
 
     async deleteObject(key: string): Promise<void> {
@@ -88,6 +145,11 @@ export function createFakeObjectStorage(): FakeObjectStorage {
     },
 
     clear(): void {
+      objects.clear()
+    },
+
+    dispose(): void {
+      server.stop(true)
       objects.clear()
     },
   }

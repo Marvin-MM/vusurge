@@ -35,11 +35,11 @@ export function loadTestConfig(overrides: Partial<Record<string, string>> = {}):
     // credentials for an offline test run.
     EMAIL_ENABLED: 'false',
     CLOUDINARY_ENABLED: 'false',
-    // config.ts defaults OBJECT_STORAGE_ENABLED to true, which triggers the
-    // cross-field validator to require S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY.
-    // Unit tests that don't exercise object storage must not need real S3
-    // credentials — disable it here and let tests that need it override explicitly.
-    OBJECT_STORAGE_ENABLED: overrides['OBJECT_STORAGE_ENABLED'] ?? 'false',
+    S3_ACCESS_KEY_ID: overrides['S3_ACCESS_KEY_ID'] ?? 'test-access-key',
+    S3_SECRET_ACCESS_KEY: overrides['S3_SECRET_ACCESS_KEY'] ?? 'test-secret-key',
+    OBJECT_STORAGE_ENABLED:
+      overrides['OBJECT_STORAGE_ENABLED'] ??
+      (overrides['FEATURE_DOCUMENT_UPLOADS'] === 'true' ? 'true' : 'false'),
     MALWARE_SCANNER_ENABLED: overrides['MALWARE_SCANNER_ENABLED'] ?? 'false',
     FEATURE_DOCUMENT_UPLOADS: overrides['FEATURE_DOCUMENT_UPLOADS'] ?? 'false',
     FEATURE_SSE_NOTIFICATIONS: overrides['FEATURE_SSE_NOTIFICATIONS'] ?? 'false',
