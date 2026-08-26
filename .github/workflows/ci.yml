@@ -531,6 +531,23 @@ jobs:
           envs: API_IMAGE,WORKER_IMAGE
           script: |
             set -euo pipefail
+
+            # k3s writes its kubeconfig to /etc/rancher/k3s/k3s.yaml which is
+            # only readable by root. Point kubectl at the user's own copy
+            # (created once by: mkdir -p ~/.kube &&
+            #   sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config &&
+            #   sudo chown $USER:$USER ~/.kube/config &&
+            #   chmod 600 ~/.kube/config).
+            export KUBECONFIG="${HOME}/.kube/config"
+
+            if [ ! -f "${KUBECONFIG}" ]; then
+              echo "::error::${KUBECONFIG} not found on VPS. Run the one-time setup:"
+              echo "  mkdir -p ~/.kube"
+              echo "  sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config"
+              echo "  sudo chown \$USER:\$USER ~/.kube/config && chmod 600 ~/.kube/config"
+              exit 1
+            fi
+
             NS=innovation-platform
 
             # Update both the main container AND its init-db-migrate
