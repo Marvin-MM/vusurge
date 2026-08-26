@@ -527,7 +527,11 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT }}
+          # Default to 22; set VPS_SSH_PORT secret if your server uses a non-standard port.
+          port: ${{ secrets.VPS_SSH_PORT || '22' }}
+          # Fail fast if the VPS is unreachable rather than waiting the full job timeout.
+          timeout: 30s
+          command_timeout: 10m
           envs: API_IMAGE,WORKER_IMAGE
           script: |
             set -euo pipefail
