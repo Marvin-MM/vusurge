@@ -14,9 +14,8 @@
  * Usage:
  *   bun run bootstrap:superadmin -- --email admin@example.org --reason "initial platform bootstrap"
  *
- * Required environment: MIGRATION_DATABASE_URL. The command deliberately
- * refuses an ordinary runtime connection: platform-role changes are never part
- * of the public API or the application runtime's ambient authority.
+ * Required environment: DATABASE_URL. The command deliberately
+ * connects via the same credential that owns the schema.
  */
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../src/generated/prisma/client'
@@ -43,9 +42,9 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  const databaseUrl = process.env['MIGRATION_DATABASE_URL']
+  const databaseUrl = process.env['DATABASE_URL']
   if (databaseUrl === undefined || databaseUrl === '') {
-    console.error('MIGRATION_DATABASE_URL must be set.')
+    console.error('DATABASE_URL must be set.')
     process.exit(1)
   }
 

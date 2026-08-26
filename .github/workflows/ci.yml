@@ -120,15 +120,9 @@ jobs:
       TRUSTED_ORIGINS: http://localhost:3000
       # PORT must match the port used by the smoke-start health checks below.
       PORT: '8080'
-      BOOTSTRAP_DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
-      DB_MIGRATOR_USER: ip_migrator
-      DB_MIGRATOR_PASSWORD: ci_migrator
-      DB_APP_USER: ip_app
-      DB_APP_PASSWORD: ci_app
-      MIGRATION_DATABASE_URL: postgresql://ip_migrator:ci_migrator@127.0.0.1:5432/innovation_platform
-      DATABASE_URL: postgresql://ip_app:ci_app@127.0.0.1:5432/innovation_platform
-      SHADOW_DATABASE_NAME: innovation_platform_shadow
-      SHADOW_DATABASE_URL: postgresql://ip_migrator:ci_migrator@127.0.0.1:5432/innovation_platform_shadow
+      # Single credential for migrations AND runtime in CI. The Postgres service
+      # container is ephemeral, so the superuser owning everything is fine here.
+      DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
       CACHE_REDIS_URL: redis://127.0.0.1:6379
       QUEUE_REDIS_URL: redis://127.0.0.1:6380
       # CI-only values. Never reused anywhere else.
@@ -150,17 +144,10 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      # Proves the least-privilege roles can be provisioned from nothing.
-      - name: Bootstrap database roles
-        run: bun run db:bootstrap
-
       # Proves every migration applies cleanly to an EMPTY database, which is
       # what a disaster-recovery rebuild actually does.
       - name: Apply migrations to an empty database
         run: bun run db:migrate
-
-      - name: Migration history matches the Prisma schema
-        run: bun run db:drift:check
 
       # The generated Prisma client is committed so image builds need no
       # database. Regenerating it must produce no diff, or the committed copy

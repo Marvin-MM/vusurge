@@ -13,7 +13,6 @@
     "start:worker": "bun run src/worker.ts",
     "dev:api": "bun --watch src/index.ts",
     "dev:worker": "bun --watch src/worker.ts",
-    "db:bootstrap": "bun run scripts/bootstrap-db.ts",
     "db:migrate": "bun run scripts/run-prisma.ts migrate deploy",
     "db:test:migrate": "bun run scripts/run-prisma.ts --test-database migrate deploy",
     "db:migration:create": "bun run scripts/create-migration.ts",

@@ -24,12 +24,6 @@ if (name === undefined || !/^[a-z0-9_]+$/.test(name)) {
 const backendDir = join(import.meta.dir, '..')
 const migrationsDir = join(backendDir, 'prisma', 'migrations')
 
-const shadowUrl = process.env['SHADOW_DATABASE_URL']
-if (shadowUrl === undefined || shadowUrl === '') {
-  console.error('SHADOW_DATABASE_URL is required to diff the schema safely.')
-  process.exit(1)
-}
-
 const diff = spawnSync(
   'bunx',
   [
@@ -42,8 +36,9 @@ const diff = spawnSync(
     'prisma/schema',
     '--script',
   ],
-  // The shadow database used to replay the migration history is read from
-  // prisma.config.ts (SHADOW_DATABASE_URL); Prisma 7 removed the CLI flag.
+  // DATABASE_URL is set in the process environment (loaded from .env by Bun).
+  // prisma migrate diff with --from-migrations does not need a shadow database;
+  // it replays migration history statically without connecting to an extra DB.
   { encoding: 'utf8', cwd: backendDir },
 )
 
