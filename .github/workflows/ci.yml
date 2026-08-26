@@ -532,11 +532,17 @@ jobs:
           script: |
             set -euo pipefail
 
-            # Inject the image tags evaluated by GitHub Actions directly.
-            # This avoids reliance on SSH environment variable passing (which
-            # can fail and leave these empty, causing "Required value" errors).
-            API_IMAGE="${{ needs.publish.outputs.api_image }}"
-            WORKER_IMAGE="${{ needs.publish.outputs.worker_image }}"
+            # Compute the image tags directly (bypassing GitHub Actions job outputs).
+            # The tags are strictly deterministic based on the git sha.
+            NAMESPACE="$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')"
+            REPO="docker.io/${NAMESPACE}/innovation-platform-backend"
+            API_IMAGE="${REPO}:api-${{ github.sha }}"
+            WORKER_IMAGE="${REPO}:worker-${{ github.sha }}"
+
+            if [ -z "$NAMESPACE" ]; then
+              echo "::error::DOCKERHUB_USERNAME secret is empty, cannot compute image tags"
+              exit 1
+            fi
 
             # k3s writes its kubeconfig to /etc/rancher/k3s/k3s.yaml which is
             # only readable by root. Point kubectl at the user's own copy
