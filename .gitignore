@@ -18,3 +18,4 @@ coverage/
 .vscode/
 .claude/
 innovation_backend.md
+k8/*

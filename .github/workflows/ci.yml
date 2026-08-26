@@ -4,12 +4,23 @@ name: CI
 # section 46). Nothing here may be skipped, made non-blocking, or worked around
 # with a skipTests flag: the tenant-isolation and concurrency guarantees are
 # only credible because these jobs run against real PostgreSQL and Redis.
+#
+# Pipeline shape: static-analysis / test / security-scan / docker all run on
+# every push and PR. publish and deploy only run on pushes to main, and only
+# after every one of those jobs has passed — a red test never reaches
+# production because it never reaches a registry in the first place.
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+# Default to the least privilege the workflow needs; individual jobs escalate
+# explicitly (packages: write for publish) rather than the whole workflow
+# running with broad token permissions by default.
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,6 +37,7 @@ jobs:
   static-analysis:
     name: Lint, typecheck and generated-artifact check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
@@ -53,6 +65,7 @@ jobs:
   test:
     name: Tests against real PostgreSQL and Redis
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -87,9 +100,9 @@ jobs:
     env:
       APP_ENV: test
       PROCESS_ROLE: api
-      PUBLIC_BASE_URL: http://localhost:3000
-      WEB_APP_BASE_URL: http://localhost:3001
-      TRUSTED_ORIGINS: http://localhost:3001
+      PUBLIC_BASE_URL: http://localhost:8080
+      WEB_APP_BASE_URL: http://localhost:3000
+      TRUSTED_ORIGINS: http://localhost:3000
       BOOTSTRAP_DATABASE_URL: postgresql://ci_bootstrap:ci_bootstrap@127.0.0.1:5432/innovation_platform
       DB_MIGRATOR_USER: ip_migrator
       DB_MIGRATOR_PASSWORD: ci_migrator
@@ -175,7 +188,7 @@ jobs:
           bun run src/index.ts &
           API_PID=$!
           for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:3000/health/ready > /dev/null; then
+            if curl -fsS http://127.0.0.1:8080/health/ready > /dev/null; then
               echo "API reported ready"
               break
             fi
@@ -207,6 +220,7 @@ jobs:
   security-scan:
     name: Dependency and secret scanning
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -246,8 +260,9 @@ jobs:
           echo ".env.example contains no credential-shaped values"
 
   docker:
-    name: Container image build
+    name: Container image build (validation only, no push)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
@@ -291,3 +306,187 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: false
           exit-code: '1'
+
+      # Build and scan the worker target too — a vulnerability in the worker
+      # image that only exists there (e.g. a worker-only dependency) would not
+      # be caught if we only scan the api target above.
+      - name: Build worker image for vulnerability scan
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: worker
+          push: false
+          load: true
+          tags: innovation-platform-backend:ci-worker
+          cache-from: type=gha
+
+      - name: Scan worker release image (no HIGH/CRITICAL findings)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: innovation-platform-backend:ci-worker
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+
+  publish:
+    name: Build, push and scan images on Docker Hub
+    runs-on: ubuntu-latest
+    needs: [static-analysis, test, security-scan, docker]
+    # Only main gets published. A PR build proves the image builds and scans
+    # clean (the `docker` job above); it never earns a registry tag.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # packages: write is NOT needed here — images go to Docker Hub, not
+      # GHCR. If you ever move to GHCR, add `packages: write` to this job.
+    outputs:
+      api_image: ${{ steps.image-repo.outputs.api }}
+      worker_image: ${{ steps.image-repo.outputs.worker }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      # Requires two repo secrets: DOCKERHUB_USERNAME (your Docker Hub
+      # username or org) and DOCKERHUB_TOKEN (a Docker Hub access token
+      # scoped to Read & Write for this repo — never your account password;
+      # generate one under Account Settings > Security > Access Tokens).
+      - name: Log in to Docker Hub
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Docker Hub requires a lowercase namespace/repository. Both process
+      # tags (api-*, worker-*) live under ONE repository, which matters on
+      # Docker Hub specifically: free accounts get exactly one private repo,
+      # and tags are free — so "same image, different tag prefix" isn't just
+      # tidy, it's what keeps this deployable on a free plan at all.
+      - name: Compute image repository (lowercase)
+        id: image-repo
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          NAMESPACE="$(echo "$DOCKERHUB_USERNAME" | tr '[:upper:]' '[:lower:]')"
+          REPO="docker.io/${NAMESPACE}/innovation-platform-backend"
+          echo "api=${REPO}:api-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "worker=${REPO}:worker-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "base=${REPO}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push API image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: api
+          push: true
+          provenance: true
+          sbom: true
+          build-args: |
+            BUILD_VERSION=${{ github.ref_name }}
+            GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ steps.image-repo.outputs.api }}
+            ${{ steps.image-repo.outputs.base }}:api-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: backend
+          target: worker
+          push: true
+          provenance: true
+          sbom: true
+          build-args: |
+            BUILD_VERSION=${{ github.ref_name }}
+            GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ steps.image-repo.outputs.worker }}
+            ${{ steps.image-repo.outputs.base }}:worker-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Re-scan the image that was actually pushed, not the locally-built one
+      # from the earlier `docker` job. The two should be byte-identical given
+      # a frozen lockfile and shared build cache, but "should be" isn't the
+      # same guarantee as "the thing we scanned is the thing we're shipping".
+      - name: Scan pushed API image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: ${{ steps.image-repo.outputs.api }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+
+      - name: Scan pushed worker image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: ${{ steps.image-repo.outputs.worker }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+
+  deploy:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    needs: [publish]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+    timeout-minutes: 15
+    # A second deploy must never race a first: serialize deploys and let each
+    # one finish, rather than cancelling a rollout halfway through the way the
+    # top-level `ci` concurrency group cancels stale builds.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      # Requires three repo secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (and
+      # optionally VPS_SSH_PORT). The VPS user must already have a working
+      # kubeconfig for the k3s cluster and a `dockerhub-pull-secret` must
+      # already exist in the innovation-platform namespace — see the top of
+      # k8s-deploy.yaml for the one-time setup commands.
+      #
+      # Migrations are NOT orchestrated from here. Both Deployments carry an
+      # `init-db-migrate` initContainer that runs `prisma migrate deploy`
+      # before their main container starts (see k8s-deploy.yaml). Prisma's
+      # migrate deploy takes an advisory lock, so it's safe for the api and
+      # worker pods to both attempt it on every rollout — one applies
+      # anything pending, the others find nothing to do and exit immediately.
+      # `kubectl rollout status` already blocks until pods are Ready, and a
+      # pod isn't Ready until its initContainers succeed — so this gives you
+      # the same "don't serve traffic until the schema is current" guarantee
+      # the old Job-based step did, with less moving CI machinery.
+      - name: Roll out new images
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1
+        env:
+          API_IMAGE: ${{ needs.publish.outputs.api_image }}
+          WORKER_IMAGE: ${{ needs.publish.outputs.worker_image }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          envs: API_IMAGE,WORKER_IMAGE
+          script: |
+            set -euo pipefail
+            NS=innovation-platform
+
+            # Update both the main container AND its init-db-migrate
+            # initContainer in one call — `kubectl set image` accepts either
+            # kind of container by name, and both must move to the new image
+            # or the initContainer would migrate with old Prisma schema code
+            # while the main container runs new application code.
+            kubectl -n "$NS" set image deployment/api-deployment \
+              api="${API_IMAGE}" init-db-migrate="${API_IMAGE}"
+            kubectl -n "$NS" set image deployment/worker-deployment \
+              worker="${WORKER_IMAGE}" init-db-migrate="${WORKER_IMAGE}"
+
+            kubectl -n "$NS" rollout status deployment/api-deployment --timeout=180s
+            kubectl -n "$NS" rollout status deployment/worker-deployment --timeout=180s

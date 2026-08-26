@@ -1,11 +1,26 @@
-.env
-.env.*
-!.env.example
+tmp
+*.tsbuildinfo
 .git
 .github
 node_modules
-coverage
+npm-debug.log*
+
+# Local/real secrets must never reach the build context, even accidentally.
+.env
+.env.*
+!.env.example
+
 dist
-tmp
+coverage
+docs
+*.md
+.vscode
+.idea
+.DS_Store
 *.log
-*.tsbuildinfo
+
+# Deployment/CI files aren't needed inside the image.
+Dockerfile
+.dockerignore
+docker-compose*.yml
+k8s/
