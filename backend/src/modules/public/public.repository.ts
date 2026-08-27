@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../shared/database'
+import type { PrismaTransactionClient } from '../../shared/database'
 import { buildPage, type Page, type PageRequest } from '../../shared/http'
 
 export interface PublicOrganizationRow {
@@ -335,53 +335,56 @@ function projectFromSqlRow(row: PublicProjectSqlRow): PublicProjectRow {
 
 export interface PublicRepository {
   listOrganizations(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     query: string | undefined,
     page: PageRequest,
   ): Promise<Page<PublicOrganizationRow>>
-  findOrganizationBySlug(client: PrismaClient, slug: string): Promise<PublicOrganizationRow | null>
+  findOrganizationBySlug(
+    client: PrismaTransactionClient,
+    slug: string,
+  ): Promise<PublicOrganizationRow | null>
   listChallenges(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     query: string | undefined,
     page: PageRequest,
   ): Promise<Page<PublicChallengeRow>>
   listChallengesForOrganization(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     page: PageRequest,
   ): Promise<Page<PublicChallengeRow>>
   findChallenge(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     challengeSlug: string,
   ): Promise<PublicChallengeRow | null>
   listInnovationsForOrganization(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     page: PageRequest,
   ): Promise<Page<PublicInnovationRow>>
   listTracksForChallenge(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     challengeSlug: string,
   ): Promise<PublicChallengeTrackRow[]>
   listAnnouncementsForChallenge(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     challengeSlug: string,
   ): Promise<PublicAnnouncementRow[]>
   listFaqsForChallenge(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     challengeSlug: string,
   ): Promise<PublicFaqRow[]>
   listResultsForChallenge(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     challengeSlug: string,
   ): Promise<PublicSubmissionResultRow[]>
   listProjectsForOrganization(
-    client: PrismaClient,
+    client: PrismaTransactionClient,
     organizationSlug: string,
     page: PageRequest,
   ): Promise<Page<PublicProjectRow>>

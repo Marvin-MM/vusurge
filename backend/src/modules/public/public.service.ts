@@ -1,4 +1,4 @@
-import type { Database } from '../../shared/database'
+import type { TenantTransactionRunner } from '../../shared/database'
 import { notFound } from '../../shared/errors'
 import { type Page, type PaginationLimits, toPageRequest } from '../../shared/http'
 import { type RateLimiter, RateLimitPolicies } from '../../shared/rate-limit'
@@ -51,7 +51,7 @@ export interface PublicService {
 
 export function createPublicService(
   repository: PublicRepository,
-  database: Database,
+  transactions: TenantTransactionRunner,
   rateLimiter: RateLimiter,
   limits: PaginationLimits,
 ): PublicService {
@@ -62,11 +62,15 @@ export function createPublicService(
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
       const page = toPageRequest(query, limits)
       const q = query.q?.trim().slice(0, 100)
-      return repository.listOrganizations(database.client, q === '' ? undefined : q, page)
+      return transactions.withPublicProjection((tx) =>
+        repository.listOrganizations(tx, q === '' ? undefined : q, page),
+      )
     },
 
     async getOrganization(slug) {
-      const organization = await repository.findOrganizationBySlug(database.client, slug)
+      const organization = await transactions.withPublicProjection((tx) =>
+        repository.findOrganizationBySlug(tx, slug),
+      )
       if (organization === null) throw notFound('Organization not found.')
       return organization
     },
@@ -75,20 +79,22 @@ export function createPublicService(
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
       const page = toPageRequest(query, limits)
       const q = query.q?.trim().slice(0, 100)
-      return repository.listChallenges(database.client, q === '' ? undefined : q, page)
+      return transactions.withPublicProjection((tx) =>
+        repository.listChallenges(tx, q === '' ? undefined : q, page),
+      )
     },
 
     async listChallengesForOrganization(organizationSlug, query, ipAddress) {
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
       const page = toPageRequest(query, limits)
-      return repository.listChallengesForOrganization(database.client, organizationSlug, page)
+      return transactions.withPublicProjection((tx) =>
+        repository.listChallengesForOrganization(tx, organizationSlug, page),
+      )
     },
 
     async getChallenge(organizationSlug, challengeSlug) {
-      const challenge = await repository.findChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
+      const challenge = await transactions.withPublicProjection((tx) =>
+        repository.findChallenge(tx, organizationSlug, challengeSlug),
       )
       if (challenge === null) throw notFound('Challenge not found.')
       return challenge
@@ -97,57 +103,49 @@ export function createPublicService(
     async listInnovationsForOrganization(organizationSlug, query, ipAddress) {
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
       const page = toPageRequest(query, limits)
-      return repository.listInnovationsForOrganization(database.client, organizationSlug, page)
+      return transactions.withPublicProjection((tx) =>
+        repository.listInnovationsForOrganization(tx, organizationSlug, page),
+      )
     },
 
     async listTracks(organizationSlug, challengeSlug) {
-      const challenge = await repository.findChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
-      )
-      if (challenge === null) throw notFound('Challenge not found.')
-      return repository.listTracksForChallenge(database.client, organizationSlug, challengeSlug)
+      return transactions.withPublicProjection(async (tx) => {
+        const challenge = await repository.findChallenge(tx, organizationSlug, challengeSlug)
+        if (challenge === null) throw notFound('Challenge not found.')
+        return repository.listTracksForChallenge(tx, organizationSlug, challengeSlug)
+      })
     },
 
     async listAnnouncements(organizationSlug, challengeSlug) {
-      const challenge = await repository.findChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
-      )
-      if (challenge === null) throw notFound('Challenge not found.')
-      return repository.listAnnouncementsForChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
-      )
+      return transactions.withPublicProjection(async (tx) => {
+        const challenge = await repository.findChallenge(tx, organizationSlug, challengeSlug)
+        if (challenge === null) throw notFound('Challenge not found.')
+        return repository.listAnnouncementsForChallenge(tx, organizationSlug, challengeSlug)
+      })
     },
 
     async listFaqs(organizationSlug, challengeSlug) {
-      const challenge = await repository.findChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
-      )
-      if (challenge === null) throw notFound('Challenge not found.')
-      return repository.listFaqsForChallenge(database.client, organizationSlug, challengeSlug)
+      return transactions.withPublicProjection(async (tx) => {
+        const challenge = await repository.findChallenge(tx, organizationSlug, challengeSlug)
+        if (challenge === null) throw notFound('Challenge not found.')
+        return repository.listFaqsForChallenge(tx, organizationSlug, challengeSlug)
+      })
     },
 
     async listResults(organizationSlug, challengeSlug) {
-      const challenge = await repository.findChallenge(
-        database.client,
-        organizationSlug,
-        challengeSlug,
-      )
-      if (challenge === null) throw notFound('Challenge not found.')
-      return repository.listResultsForChallenge(database.client, organizationSlug, challengeSlug)
+      return transactions.withPublicProjection(async (tx) => {
+        const challenge = await repository.findChallenge(tx, organizationSlug, challengeSlug)
+        if (challenge === null) throw notFound('Challenge not found.')
+        return repository.listResultsForChallenge(tx, organizationSlug, challengeSlug)
+      })
     },
 
     async listProjectsForOrganization(organizationSlug, query, ipAddress) {
       await rateLimiter.enforce(RateLimitPolicies.PublicListing, { ipAddress })
       const page = toPageRequest(query, limits)
-      return repository.listProjectsForOrganization(database.client, organizationSlug, page)
+      return transactions.withPublicProjection((tx) =>
+        repository.listProjectsForOrganization(tx, organizationSlug, page),
+      )
     },
   }
 }

@@ -144,6 +144,29 @@ export interface TenantTransactionRunner {
   ): Promise<T>
 
   /**
+   * Run `work` able to read the curated public projection views.
+   *
+   * The `public_*_view` views are security-barrier projections that already
+   * restrict themselves to public-safe rows (active/public organizations,
+   * published/public challenges, consented showcase projects, and so on). They
+   * are defined `security_invoker = false`, so they read their base tables as
+   * the view owner; under the single-role architecture that owner is the
+   * ordinary application role, which is subject to FORCE ROW LEVEL SECURITY.
+   * With neither a tenant nor a platform context the tenant-isolation policies
+   * return zero rows, so an unauthenticated visitor would see nothing.
+   *
+   * This enables `app.platform_access` transaction-locally so those policies
+   * admit the rows, then relies on the views' own WHERE clauses as the single
+   * exposure boundary. It is deliberately NOT audited as a platform-admin
+   * action, because serving already-public data is not one: callers must only
+   * ever read the `public_*_view` views through it, never base tables directly.
+   */
+  withPublicProjection<T>(
+    work: (tx: PrismaTransactionClient) => Promise<T>,
+    options?: TransactionOptions,
+  ): Promise<T>
+
+  /**
    * Run `work` with access to resolve exactly one row by an unguessable
    * secret, before that row's tenant is known.
    *
@@ -264,6 +287,17 @@ export function createTenantTransactionRunner(
 
     withoutTenant(work, options = {}) {
       const settings: Record<string, string> = {}
+      if (options.actorUserId) settings['app.actor_user_id'] = options.actorUserId
+      return run(settings, work, options)
+    },
+
+    withPublicProjection(work, options = {}) {
+      // Reuses the platform-access RLS escape hatch, but without the audit log
+      // withPlatformAccess emits: this is not an administrative bypass, it is
+      // how the security-barrier public.*_view projections read their already
+      // public-safe rows under FORCE ROW LEVEL SECURITY. The views' own WHERE
+      // clauses remain the exposure boundary.
+      const settings: Record<string, string> = { 'app.platform_access': 'on' }
       if (options.actorUserId) settings['app.actor_user_id'] = options.actorUserId
       return run(settings, work, options)
     },

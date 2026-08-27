@@ -381,7 +381,7 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
   const publicRepository = createPublicRepository()
   const publicService = createPublicService(
     publicRepository,
-    infrastructure.database,
+    infrastructure.transactions,
     infrastructure.rateLimiter,
     paginationLimits,
   )
@@ -390,7 +390,7 @@ export function registerModules(infrastructure: Infrastructure, auth: AuthPlugin
   // --- search ------------------------------------------------------------
   const searchService = createSearchService(
     publicRepository,
-    infrastructure.database,
+    infrastructure.transactions,
     infrastructure.rateLimiter,
   )
   const searchController = createSearchController(searchService)

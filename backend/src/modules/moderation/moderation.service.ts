@@ -89,23 +89,29 @@ export function createModerationService(
       const { actor } = requireVerifiedActor(access)
       await rateLimiter.enforce(RateLimitPolicies.ContentReportCreation, { userId: actor.userId })
 
-      return transactions.withoutTenant(
+      // Resolve the report target through the reporter's own visibility. The
+      // membership check and the public-view lookups read across tenants, so
+      // they run in a public-projection transaction; the report row and its
+      // audit record are then written separately with no such bypass.
+      const targetOrganizationId = await transactions.withPublicProjection(
         async (tx) => {
-          let targetOrganizationId: string
-
           if (input.targetType === 'ORGANIZATION') {
             const isMember = await repository.hasMembership(tx, actor.userId, input.targetId)
             const resolved = isMember
               ? input.targetId
               : await repository.findPublicOrganizationId(tx, input.targetId)
             if (resolved === null) throw notFound('Organization not found.')
-            targetOrganizationId = resolved
-          } else {
-            const resolved = await repository.findPublicChallengeOrganizationId(tx, input.targetId)
-            if (resolved === null) throw notFound('Challenge not found.')
-            targetOrganizationId = resolved
+            return resolved
           }
+          const resolved = await repository.findPublicChallengeOrganizationId(tx, input.targetId)
+          if (resolved === null) throw notFound('Challenge not found.')
+          return resolved
+        },
+        { actorUserId: actor.userId },
+      )
 
+      return transactions.withoutTenant(
+        async (tx) => {
           const report = await repository.create(tx, {
             id: newId(),
             reporterUserId: actor.userId,
