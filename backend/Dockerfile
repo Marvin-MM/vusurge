@@ -78,7 +78,18 @@ WORKDIR /app
 # The Bun tag is immutable-pinned, but Alpine security packages continue to
 # receive fixes after that image is published. Apply those fixes at build time;
 # the blocking image scan in CI catches anything that regresses.
-RUN apk upgrade --no-cache libcrypto3 libssl3
+#
+# Pin the minimum PATCHED versions rather than a bare `apk upgrade libssl3
+# libcrypto3`. A bare upgrade is a byte-identical layer instruction, so
+# BuildKit (cache-from: gha in CI) serves the layer built before the fix
+# existed and keeps shipping the vulnerable package — which is exactly how
+# CVE-2026-14456 (fixed in openssl 3.5.8-r0) slips past a build that "already
+# runs apk upgrade". Encoding the fixed floor changes this layer's cache key
+# the instant we bump it, and makes the build FAIL LOUDLY if the patched
+# package is not in the repository yet instead of silently shipping a
+# known-vulnerable openssl. Bump these floors for each new advisory the CI
+# Trivy gate reports.
+RUN apk add --no-cache --upgrade 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'
 
 ARG BUILD_VERSION=0.0.0-unknown
 ARG GIT_SHA=unknown
