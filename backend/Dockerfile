@@ -40,7 +40,7 @@ COPY package.json bun.lock ./
 # Cache mount: speeds up repeated CI builds without adding anything to the
 # final image — cache mounts are never committed to a layer.
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --production --omit peer --ignore-scripts
+  bun install --frozen-lockfile --production --omit peer --ignore-scripts
 
 # Because --ignore-scripts suppresses all postinstall steps, we must manually
 # trigger the Prisma engines download. Without this, the schema-engine binary
@@ -56,7 +56,7 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --ignore-scripts
+  bun install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json biome.json .gitignore ./
 COPY src ./src
@@ -108,10 +108,10 @@ ENV GIT_SHA=${GIT_SHA}
 # TODO: replace OWNER/REPO with the real GitHub org/repo slug before
 # pushing to any registry.
 LABEL org.opencontainers.image.title="innovation-platform-backend" \
-      org.opencontainers.image.source="https://github.com/OWNER/REPO" \
-      org.opencontainers.image.revision="${GIT_SHA}" \
-      org.opencontainers.image.version="${BUILD_VERSION}" \
-      org.opencontainers.image.licenses="UNLICENSED"
+  org.opencontainers.image.source="https://github.com/OWNER/REPO" \
+  org.opencontainers.image.revision="${GIT_SHA}" \
+  org.opencontainers.image.version="${BUILD_VERSION}" \
+  org.opencontainers.image.licenses="UNLICENSED"
 
 COPY --from=dependencies --chown=bun:bun /app/node_modules ./node_modules
 COPY --chown=bun:bun package.json bun.lock tsconfig.json prisma.config.ts ./
