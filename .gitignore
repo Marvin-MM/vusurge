@@ -17,5 +17,6 @@ coverage/
 .idea/
 .vscode/
 .claude/
+.qwen/
 innovation_backend.md
 k8/*
