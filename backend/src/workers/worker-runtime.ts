@@ -3,7 +3,7 @@ import type { Infrastructure } from '../container'
 import { newRequestId } from '../shared/ids'
 import { describeError, runWithRequestContext } from '../shared/logging'
 import { appMetrics, withSpan } from '../shared/observability'
-import { createOutboxDispatcher } from '../shared/outbox'
+import { createOutboxDispatcher, createOutboxListener, createOutboxRelay } from '../shared/outbox'
 import { ALL_QUEUE_NAMES, QueueName } from '../shared/queue'
 import { elapsedMs, startTimer } from '../shared/time'
 import { type JobRouter, markOutboxProcessed, recordOutboxFailure } from './job-router'
@@ -14,11 +14,13 @@ import { installScheduledJobs, runScheduledJob, type ScheduledJobData } from './
  *
  * Runs two things:
  *
- *   the dispatch loop  polls the outbox, publishes due events to BullMQ, and
- *                      reconciles rows stuck in ENQUEUED
- *   queue workers      one BullMQ Worker per logical queue, each with its own
- *                      concurrency budget so a burst of exports cannot starve
- *                      transactional email (master prompt section 20)
+ *   the outbox relay  LISTEN/NOTIFY-driven: wakes when an application
+ *                     transaction commits an outbox event, claims rows with
+ *                     FOR UPDATE SKIP LOCKED, and publishes to BullMQ. A
+ *                     fallback poll bounds missed-notification damage.
+ *   queue workers     one BullMQ Worker per logical queue, each with its own
+ *                     concurrency budget so a burst of exports cannot starve
+ *                     transactional email (master prompt section 20)
  *
  * Every job body carries the outbox event ID, and BullMQ is given that ID as
  * the job ID, so duplicate delivery is both possible and safe.
@@ -50,16 +52,16 @@ export function createWorkerRuntime(
 ): WorkerRuntime {
   const { config, logger, queueRedis } = infrastructure
   const metrics = appMetrics()
+
+  const workers: Worker[] = []
   const dispatcher = createOutboxDispatcher(
     infrastructure.transactions,
     infrastructure.queues,
     config,
     logger,
   )
-
-  const workers: Worker[] = []
-  let dispatchTimer: ReturnType<typeof setTimeout> | undefined
-  let running = false
+  const listener = createOutboxListener(config, logger)
+  const relay = createOutboxRelay({ dispatcher, listener, config, logger })
 
   const concurrencyFor = (queue: string): number => {
     const map: Record<string, number> = {
@@ -171,37 +173,8 @@ export function createWorkerRuntime(
     )
   }
 
-  /**
-   * Dispatch loop.
-   *
-   * A timer rather than setInterval: chaining the next tick only after the
-   * current one finishes prevents overlapping sweeps from piling up when the
-   * database is slow.
-   */
-  async function dispatchTick(): Promise<void> {
-    if (!running) return
-
-    try {
-      const dispatched = await dispatcher.dispatchBatch()
-      await dispatcher.reconcileStale()
-      await dispatcher.oldestPendingAgeSeconds()
-
-      if (dispatched > 0) {
-        logger.debug({ dispatched }, 'Dispatched outbox events')
-      }
-    } catch (error) {
-      logger.error({ err: describeError(error) }, 'Outbox dispatch sweep failed')
-    }
-
-    if (running) {
-      dispatchTimer = setTimeout(() => void dispatchTick(), config.worker.outbox.pollIntervalMs)
-    }
-  }
-
   return {
     async start(): Promise<void> {
-      running = true
-
       for (const queueName of ALL_QUEUE_NAMES) {
         const worker = new Worker<WorkerJobData>(queueName, processJob, {
           connection: queueRedis,
@@ -227,6 +200,17 @@ export function createWorkerRuntime(
 
       await installScheduledJobs(infrastructure)
 
+      // Starts the LISTEN connection and performs the initial sweep. Failures
+      // inside the relay are contained: the relay keeps its own reconnect and
+      // fallback poll going, so a start-up sweep error must not abort the
+      // worker's queue consumption.
+      await relay.start().catch((error: unknown) => {
+        logger.error(
+          { err: describeError(error) },
+          'Outbox relay failed to start; falling back to interval polling only',
+        )
+      })
+
       logger.info(
         {
           queues: ALL_QUEUE_NAMES.length,
@@ -235,13 +219,12 @@ export function createWorkerRuntime(
         },
         'Worker process started',
       )
-
-      void dispatchTick()
     },
 
     async stop(): Promise<void> {
-      running = false
-      if (dispatchTimer !== undefined) clearTimeout(dispatchTimer)
+      // Stop the relay first: no new claims may be made while the queue
+      // workers below drain their in-flight jobs.
+      await relay.stop()
 
       // close() stops accepting new jobs and waits for active ones to finish,
       // so a job is never abandoned halfway through its side effect.

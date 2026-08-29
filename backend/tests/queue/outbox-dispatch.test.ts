@@ -86,8 +86,9 @@ describe('outbox dispatch', () => {
     const traceParent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'
     const id = await insertOutboxEvent({ eventType: 'test.dispatch', traceParent })
 
-    const published = await dispatcher.dispatchBatch()
-    expect(published).toBe(1)
+    const outcome = await dispatcher.dispatchBatch()
+    expect(outcome.claimed).toBe(1)
+    expect(outcome.published).toBe(1)
 
     const { rows } = await sql.query<{ state: string; attempts: number; enqueued_at: Date | null }>(
       'select state, attempts, enqueued_at from outbox_event where id = $1',
@@ -111,7 +112,22 @@ describe('outbox dispatch', () => {
       availableAt: new Date(Date.now() + 60_000).toISOString(),
     })
 
-    expect(await dispatcher.dispatchBatch()).toBe(0)
+    expect((await dispatcher.dispatchBatch()).published).toBe(0)
+  })
+
+  test('reports the next future available_at for delayed events', async () => {
+    const inFortySeconds = new Date(Date.now() + 40_000)
+    await insertOutboxEvent({
+      eventType: 'test.delayed-probe',
+      availableAt: inFortySeconds.toISOString(),
+    })
+    await insertOutboxEvent({ eventType: 'test.ready' })
+
+    const next = await dispatcher.nextPendingAvailableAt()
+    expect(next).not.toBeNull()
+    const nextMs = next?.getTime() ?? 0
+    expect(nextMs).toBeGreaterThan(Date.now() + 30_000)
+    expect(nextMs).toBeLessThan(Date.now() + 50_000)
   })
 
   test('re-dispatching the same row produces exactly one queue job', async () => {
@@ -142,7 +158,8 @@ describe('outbox dispatch', () => {
       dispatcher.dispatchBatch(),
     ])
 
-    expect(first + second).toBe(5)
+    expect(first.claimed + second.claimed).toBe(5)
+    expect(first.published + second.published).toBe(5)
 
     const { rows } = await sql.query<{ count: string }>(
       "select count(*)::text as count from outbox_event where state = 'ENQUEUED' and attempts > 1",
@@ -180,7 +197,7 @@ describe('outbox dispatch', () => {
       fairConfig,
       infrastructure.logger,
     )
-    expect(await fairDispatcher.dispatchBatch()).toBe(2)
+    expect((await fairDispatcher.dispatchBatch()).published).toBe(2)
 
     const { rows } = await sql.query<{ organization_id: string }>(
       `select organization_id::text
@@ -307,8 +324,8 @@ describe('queue outage', () => {
     }) as typeof queue.add
 
     try {
-      const published = await dispatcher.dispatchBatch()
-      expect(published).toBe(0)
+      const outcome = await dispatcher.dispatchBatch()
+      expect(outcome.published).toBe(0)
     } finally {
       queue.add = originalAdd
     }
@@ -339,7 +356,7 @@ describe('queue outage', () => {
     }) as typeof queue.add
 
     try {
-      expect(await dispatcher.dispatchBatch()).toBe(0)
+      expect((await dispatcher.dispatchBatch()).published).toBe(0)
     } finally {
       queue.add = originalAdd
     }

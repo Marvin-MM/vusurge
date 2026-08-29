@@ -4,6 +4,7 @@ import { getRequestContext } from '../logging'
 import { currentTraceContext } from '../observability'
 import type { QueueName } from '../queue/queue-names'
 import { type DomainEventType, expectedQueueFor } from './event-catalog'
+import { OUTBOX_NOTIFY_CHANNEL, outboxNotifyPayload } from './outbox-channel'
 
 /**
  * Writing transactional outbox events.
@@ -46,7 +47,10 @@ export interface OutboxWriter {
 }
 
 export function createOutboxWriter(): OutboxWriter {
-  async function write(tx: PrismaTransactionClient, event: OutboxEventInput): Promise<string> {
+  async function insertEvent(
+    tx: PrismaTransactionClient,
+    event: OutboxEventInput,
+  ): Promise<string> {
     const expectedQueue = expectedQueueFor(event.eventType)
     if (event.queueName !== expectedQueue) {
       throw new Error(
@@ -86,12 +90,32 @@ export function createOutboxWriter(): OutboxWriter {
     return durable.id
   }
 
+  /** Wake the relay inside the caller's transaction. */
+  async function notify(tx: PrismaTransactionClient, insertedCount: number): Promise<void> {
+    // pg_notify is transactional: the notification is emitted only if the
+    // surrounding transaction commits, so a rolled-back business change can
+    // never trigger a pointless dispatch sweep. The row is the source of
+    // truth; the notification is only a wake-up hint.
+    await tx.$executeRaw`select pg_notify(${OUTBOX_NOTIFY_CHANNEL}, ${outboxNotifyPayload(insertedCount)})`
+  }
+
   return {
-    write,
+    async write(tx, event): Promise<string> {
+      const id = await insertEvent(tx, event)
+      await notify(tx, 1)
+      return id
+    },
+
     async writeMany(tx, events): Promise<string[]> {
       const ids: string[] = []
       for (const event of events) {
-        ids.push(await write(tx, event))
+        ids.push(await insertEvent(tx, event))
+      }
+      // Exactly one notification per transaction, not one per event: the
+      // relay drains whatever is pending, so a burst committed together is a
+      // single wake-up.
+      if (events.length > 0) {
+        await notify(tx, events.length)
       }
       return ids
     },

@@ -100,6 +100,7 @@ export function loadConfig(env: Env = process.env as Env): AppConfig {
 
     database: {
       url: str(env, 'DATABASE_URL', '') as string,
+      listenerUrl: optional(str(env, 'DATABASE_LISTENER_URL')),
       poolMax: int(env, 'DATABASE_POOL_MAX', 10),
       connectionTimeoutMs: int(env, 'DATABASE_CONNECTION_TIMEOUT_MS', 5_000),
       idleTimeoutMs: int(env, 'DATABASE_IDLE_TIMEOUT_MS', 30_000),
@@ -155,15 +156,23 @@ export function loadConfig(env: Env = process.env as Env): AppConfig {
       },
       outbox: {
         batchSize: int(env, 'OUTBOX_BATCH_SIZE', 100),
-        pollIntervalMs: int(env, 'OUTBOX_POLL_INTERVAL_MS', 1_000),
+        // Fallback sweep for the LISTEN/NOTIFY relay, not the primary
+        // dispatch trigger: notifications drive dispatch, this only bounds
+        // the damage of a missed one.
+        pollIntervalMs: int(env, 'OUTBOX_POLL_INTERVAL_MS', 30_000),
         staleEnqueuedAfterMs: int(env, 'OUTBOX_STALE_ENQUEUED_AFTER_MS', 300_000),
         maxAttempts: int(env, 'OUTBOX_MAX_ATTEMPTS', 10),
       },
       schedulers: {
         enabled: bool(env, 'WORKER_SCHEDULERS_ENABLED', true),
         retentionEveryMs: int(env, 'RETENTION_SCHEDULER_EVERY_MS', 3_600_000),
-        reconciliationEveryMs: int(env, 'RECONCILIATION_SCHEDULER_EVERY_MS', 60_000),
-        remindersEveryMs: int(env, 'REMINDER_SCHEDULER_EVERY_MS', 60_000),
+        // 5-minute cadence: these sweeps reconcile minute-scale staleness
+        // windows (5-minute outbox leases, 24-hour reminder lead), so a
+        // tighter interval only multiplies idle Redis traffic. Outbox
+        // recovery additionally does not wait for this timer: the relay's
+        // reconciliation notifies on reclaim.
+        reconciliationEveryMs: int(env, 'RECONCILIATION_SCHEDULER_EVERY_MS', 300_000),
+        remindersEveryMs: int(env, 'REMINDER_SCHEDULER_EVERY_MS', 300_000),
         analyticsRepairEveryMs: int(env, 'ANALYTICS_REPAIR_SCHEDULER_EVERY_MS', 900_000),
         reminderLeadHours: int(env, 'REMINDER_LEAD_HOURS', 24),
       },

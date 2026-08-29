@@ -4,17 +4,19 @@ import { describeError, type Logger } from '../logging'
 import { appMetrics } from '../observability'
 import { isQueueName } from '../queue/queue-names'
 import type { QueueRegistry } from '../queue/queue-registry'
+import { OUTBOX_NOTIFY_CHANNEL, outboxNotifyPayload } from './outbox-channel'
 
 /**
  * Outbox dispatcher and reconciler.
  *
- * Runs in the worker process. Claims committed outbox rows in bounded batches
- * and publishes them to BullMQ using the outbox row's own identifier as the job
+ * Runs in the worker process, driven by the outbox relay (see
+ * outbox-relay.ts). Claims committed outbox rows in bounded batches and
+ * publishes them to BullMQ using the outbox row's own identifier as the job
  * ID, so redelivering the same row can never create a second job.
  *
- * Claiming uses `for update skip locked`, which lets several dispatcher
- * replicas share the backlog without blocking each other and without any two
- * of them claiming the same row.
+ * Claiming uses `for update skip locked`, which lets several relay instances
+ * share the backlog without blocking each other and without any two of them
+ * claiming the same row.
  *
  * A claim changes the row to ENQUEUED in the same SQL statement that selects
  * it. Publishing happens after that transaction commits. A crash before queue
@@ -34,13 +36,26 @@ interface ClaimedEvent {
   trace_parent: string | null
 }
 
+export interface DispatchOutcome {
+  /** Rows claimed in this batch (moved to ENQUEUED). */
+  readonly claimed: number
+  /** Rows successfully published to BullMQ. */
+  readonly published: number
+}
+
 export interface OutboxDispatcher {
-  /** Dispatch one batch. Returns how many events were published. */
-  dispatchBatch(): Promise<number>
+  /** Dispatch one batch. Returns what was claimed and what was published. */
+  dispatchBatch(): Promise<DispatchOutcome>
   /** Reclaim events stuck in ENQUEUED. Returns how many were reset. */
   reconcileStale(): Promise<number>
   /** Age in seconds of the oldest event still awaiting dispatch. */
   oldestPendingAgeSeconds(): Promise<number>
+  /**
+   * Earliest `available_at` among PENDING rows that is still in the future,
+   * or null when nothing is scheduled to become dispatchable. Lets the relay
+   * sleep a precise amount instead of polling for delayed events.
+   */
+  nextPendingAvailableAt(): Promise<Date | null>
 }
 
 export function createOutboxDispatcher(
@@ -53,7 +68,7 @@ export function createOutboxDispatcher(
   const { batchSize, staleEnqueuedAfterMs, maxAttempts } = config.worker.outbox
 
   return {
-    async dispatchBatch(): Promise<number> {
+    async dispatchBatch(): Promise<DispatchOutcome> {
       // Claim and state transition are one SQL statement. Keeping the state
       // predicate on the UPDATE is important under READ COMMITTED: if another
       // dispatcher commits after this statement takes its snapshot, PostgreSQL
@@ -100,8 +115,6 @@ export function createOutboxDispatcher(
         { purpose: 'Claim the cross-tenant transactional-outbox dispatch batch.' },
       )
 
-      if (claimed.length === 0) return 0
-
       let published = 0
 
       for (const event of claimed) {
@@ -140,7 +153,7 @@ export function createOutboxDispatcher(
         }
       }
 
-      return published
+      return { claimed: claimed.length, published }
     },
 
     async reconcileStale(): Promise<number> {
@@ -169,6 +182,14 @@ export function createOutboxDispatcher(
             where state in ('PENDING', 'ENQUEUED')
               and attempts >= ${maxAttempts}
           `
+
+          // Reclaimed rows are dispatchable right now: wake every relay so the
+          // effect is retried immediately instead of waiting for the next
+          // fallback sweep. In the same transaction, so a rollback reclaims
+          // nothing and notifies nobody.
+          if (result > 0) {
+            await tx.$executeRaw`select pg_notify(${OUTBOX_NOTIFY_CHANNEL}, ${outboxNotifyPayload(result)})`
+          }
           return { result, exhausted }
         },
         { purpose: 'Reconcile stale and exhausted transactional-outbox obligations.' },
@@ -201,6 +222,20 @@ export function createOutboxDispatcher(
       const age = rows[0]?.age_seconds ?? 0
       metrics.outboxOldestPendingAgeSeconds.record(age)
       return age
+    },
+
+    async nextPendingAvailableAt(): Promise<Date | null> {
+      const rows = await transactions.withPlatformAccess(
+        (tx) => tx.$queryRaw<{ available_at: Date }[]>`
+          select min(available_at) as available_at
+          from outbox_event
+          where state = 'PENDING'
+            and available_at > now()
+            and attempts < ${maxAttempts}
+        `,
+        { purpose: 'Find when the next delayed outbox obligation becomes dispatchable.' },
+      )
+      return rows[0]?.available_at ?? null
     },
   }
 

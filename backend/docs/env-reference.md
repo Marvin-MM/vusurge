@@ -34,6 +34,7 @@ in which environment. Neither file ever contains a real secret.
 | Variable | Default | Required | Notes |
 |---|---|---|---|
 | `DATABASE_URL` | — | **yes** | Runtime connection; must use the least-privilege `ip_app` role (NOSUPERUSER, NOBYPASSRLS) |
+| `DATABASE_LISTENER_URL` | unset (use `DATABASE_URL`) | required with a transaction-mode pooler | Direct (non-pooled) endpoint for the outbox relay's LISTEN/NOTIFY session. A pooled session cannot hold LISTEN registration, so when `DATABASE_URL` goes through Neon's pooled endpoint or PgBouncer, point this at the direct host (for Neon, `DATABASE_URL` with `-pooler` removed) |
 | `MIGRATION_DATABASE_URL` | — | CLI only | Used only by `bunx prisma migrate ...`; never read by a running API/worker process |
 | `DATABASE_POOL_MAX` | `10` | | |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | `5000` | | |
@@ -98,7 +99,7 @@ protects.
 | `WORKER_CONCURRENCY_CACHE_MAINTENANCE` | `2` |
 | `WORKER_CONCURRENCY_OUTBOX_DISPATCH` | `1` |
 | `OUTBOX_BATCH_SIZE` | `100` |
-| `OUTBOX_POLL_INTERVAL_MS` | `1000` |
+| `OUTBOX_POLL_INTERVAL_MS` | `30000` | | Fallback sweep for the LISTEN/NOTIFY outbox relay: bounds the delay of a missed notification; dispatch itself is notification-driven |
 | `OUTBOX_STALE_ENQUEUED_AFTER_MS` | `300000` (5 min) — rows stuck `ENQUEUED` longer than this are reclaimed |
 | `OUTBOX_MAX_ATTEMPTS` | `10` |
 

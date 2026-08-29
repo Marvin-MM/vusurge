@@ -8,14 +8,23 @@ improving isolation.
 
 Every job is dispatched from the transactional outbox
 (`src/shared/outbox/`): a business change, its `AuditEvent`, and an
-`OutboxEvent` row are written in one PostgreSQL transaction; a separate
-dispatch loop in the worker process (`src/workers/worker-runtime.ts`) polls
-`OutboxEvent` with `FOR UPDATE SKIP LOCKED`, publishes due rows to BullMQ
-using the outbox row's own ID as the BullMQ job ID (so redelivery is safe —
-never a duplicate side effect), and reconciles rows stuck `ENQUEUED` past
-`OUTBOX_STALE_ENQUEUED_AFTER_MS`. **No queue job is ever authoritative for
+`OutboxEvent` row are written in one PostgreSQL transaction, and that same
+transaction also sends `pg_notify('outbox_event', …)` — the notification is
+delivered only when the transaction commits. In the worker process, the
+outbox relay (`src/shared/outbox/outbox-relay.ts`) holds a dedicated
+LISTEN session on that channel, wakes on the notification, claims due rows
+with `FOR UPDATE SKIP LOCKED`, and publishes them to BullMQ using the outbox
+row's own ID as the BullMQ job ID (so redelivery is safe — never a duplicate
+side effect). A fallback sweep every `OUTBOX_POLL_INTERVAL_MS` (default 30s)
+bounds the damage of a missed notification, and a scheduled reconciliation
+job returns rows stuck `ENQUEUED` past `OUTBOX_STALE_ENQUEUED_AFTER_MS` to
+`PENDING` and re-notifies. **No queue job is ever authoritative for
 challenge opening, submission deadline enforcement, or judging state** —
 every such check reads the database directly at the moment it matters.
+
+When `DATABASE_URL` runs through a transaction-mode pooler (Neon pooled
+endpoint, PgBouncer), set `DATABASE_LISTENER_URL` to a direct endpoint:
+LISTEN registration is session state a pooler cannot carry.
 
 ## Queues
 
@@ -29,7 +38,7 @@ every such check reads the database directly at the moment it matters.
 | `exports` | CSV generation and upload to private object storage. Heavy. | 2 (`WORKER_CONCURRENCY_EXPORTS`) |
 | `media-cleanup` | Orphaned Cloudinary assets and abandoned object uploads. | 2 (`WORKER_CONCURRENCY_MEDIA_CLEANUP`) |
 | `cache-maintenance` | Cache warming/invalidation driven by domain events. | 2 (`WORKER_CONCURRENCY_CACHE_MAINTENANCE`) |
-| `outbox-dispatch` | Reserved for outbox dispatch/reconciliation/retention-sweep job types, if ever queued as jobs themselves (currently the dispatch loop runs in-process on a timer, not as a BullMQ job). | 1 (`WORKER_CONCURRENCY_OUTBOX_DISPATCH`) |
+| `outbox-dispatch` | Reserved for outbox reconciliation/retention-sweep job types queued as jobs themselves (dispatch itself runs in-process, driven by LISTEN/NOTIFY with a fallback poll, not as a BullMQ job). | 1 (`WORKER_CONCURRENCY_OUTBOX_DISPATCH`) |
 
 `QUEUE_REDIS_URL` **must** be a separate Redis deployment from
 `CACHE_REDIS_URL` in production, configured with `maxmemory-policy=noeviction`

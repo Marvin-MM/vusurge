@@ -67,6 +67,14 @@ export const ConfigSchema = Type.Object({
   database: Type.Object({
     /** Runtime connection. MUST use the least-privilege application role. */
     url: NonEmptyString,
+    /**
+     * Dedicated session for PostgreSQL LISTEN/NOTIFY (outbox wake-ups).
+     * MUST point at a direct, non-pooled endpoint when `url` goes through a
+     * transaction-mode pooler (Neon pooled endpoint, PgBouncer), because a
+     * pooled session cannot hold LISTEN registration. Unset means `url` is
+     * already a direct connection.
+     */
+    listenerUrl: Type.Optional(NonEmptyString),
     poolMax: Type.Integer({ minimum: 1, maximum: 200 }),
     connectionTimeoutMs: Type.Integer({ minimum: 100 }),
     idleTimeoutMs: Type.Integer({ minimum: 1000 }),
@@ -128,6 +136,13 @@ export const ConfigSchema = Type.Object({
     }),
     outbox: Type.Object({
       batchSize: Type.Integer({ minimum: 1, maximum: 1000 }),
+      /**
+       * Fallback poll interval for the LISTEN/NOTIFY outbox relay: how often
+       * the relay sweeps for pending events even if no notification arrived.
+       * Bounds the damage of a missed notification (listener reconnect gap,
+       * notification dropped by a pooler) — it is a safety net, not the
+       * primary dispatch trigger.
+       */
       pollIntervalMs: Type.Integer({ minimum: 100 }),
       /** ENQUEUED rows older than this are reclaimed by the reconciler. */
       staleEnqueuedAfterMs: Type.Integer({ minimum: 1000 }),

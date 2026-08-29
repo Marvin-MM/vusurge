@@ -39,6 +39,8 @@ export interface AppMetrics {
   readonly outboxOldestPendingAgeSeconds: Histogram
   readonly outboxDispatched: Counter
   readonly outboxReconciled: Counter
+  /** Relay wake-ups by source — how much dispatch work is notification-driven. */
+  readonly outboxRelayWakes: Counter
 
   // Providers
   readonly emailSends: Counter
@@ -127,6 +129,9 @@ export function createMetrics(): AppMetrics {
     }),
     outboxReconciled: meter.createCounter('outbox.reconciled', {
       description: 'Stale outbox events reclaimed by the reconciler',
+    }),
+    outboxRelayWakes: meter.createCounter('outbox.relay.wakes', {
+      description: 'Outbox relay wake-ups by source (notification, fallback, reconciliation)',
     }),
 
     emailSends: meter.createCounter('email.sends', {
