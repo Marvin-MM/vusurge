@@ -92,6 +92,7 @@ export function loadConfig(env: Env = process.env as Env): AppConfig {
       host: str(env, 'HOST', '0.0.0.0') as string,
       port: int(env, 'PORT', 3000),
       trustedOrigins: list(env, 'TRUSTED_ORIGINS', ['http://localhost:3001']),
+      allowInsecureOrigins: bool(env, 'ALLOW_INSECURE_ORIGINS', false),
       trustedProxyCidrs: list(env, 'TRUSTED_PROXY_CIDRS', []),
       maxRequestBodyBytes: int(env, 'MAX_REQUEST_BODY_BYTES', 1_048_576),
       shutdownTimeoutMs: int(env, 'SHUTDOWN_TIMEOUT_MS', 25_000),
@@ -401,12 +402,28 @@ function crossFieldIssues(config: AppConfig): string[] {
     if (config.observability.logPretty) {
       issues.push('LOG_PRETTY must be false in production: logs must stay machine-parseable')
     }
-    if (!config.app.publicBaseUrl.startsWith('https://')) {
-      issues.push('PUBLIC_BASE_URL must use https in production')
-    }
-    for (const origin of config.app.trustedOrigins) {
-      if (!origin.startsWith('https://')) {
-        issues.push(`TRUSTED_ORIGINS entry "${origin}" must use https in production`)
+    if (config.app.allowInsecureOrigins) {
+      // Pre-launch waiver: the public base URL may stay on http while the
+      // deployment has no TLS story yet, and loopback origins are trusted so
+      // a developer's local frontend can call this API. Anything else on
+      // plaintext is still rejected — the waiver must never widen to an
+      // arbitrary network origin.
+      for (const origin of config.app.trustedOrigins) {
+        if (!origin.startsWith('https://') && !isLoopbackOrigin(origin)) {
+          issues.push(
+            `TRUSTED_ORIGINS entry "${origin}" must use https in production ` +
+              '(ALLOW_INSECURE_ORIGINS only permits http://localhost loopback origins)',
+          )
+        }
+      }
+    } else {
+      if (!config.app.publicBaseUrl.startsWith('https://')) {
+        issues.push('PUBLIC_BASE_URL must use https in production')
+      }
+      for (const origin of config.app.trustedOrigins) {
+        if (!origin.startsWith('https://')) {
+          issues.push(`TRUSTED_ORIGINS entry "${origin}" must use https in production`)
+        }
       }
     }
     if (config.database.url.includes('sslmode=disable')) {
@@ -424,6 +441,21 @@ function crossFieldIssues(config: AppConfig): string[] {
 function isBase64Bytes(value: string, expectedBytes: number): boolean {
   try {
     return Buffer.from(value, 'base64').length === expectedBytes
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True only for `http://localhost`, `http://127.0.0.1`, `http://[::1]`, on
+ * any port. Loopback traffic never leaves the developer's machine, so an
+ * http origin there is not network-exposed the way a LAN origin would be.
+ */
+export function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin)
+    if (url.protocol !== 'http:') return false
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
   } catch {
     return false
   }

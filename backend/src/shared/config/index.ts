@@ -1,4 +1,4 @@
-export { ConfigurationError, loadConfig } from './config'
+export { ConfigurationError, isLoopbackOrigin, loadConfig } from './config'
 export {
   type AppConfig,
   type AppEnvironment,

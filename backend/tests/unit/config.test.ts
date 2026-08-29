@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ConfigurationError, loadConfig } from '../../src/shared/config'
+import { ConfigurationError, isLoopbackOrigin, loadConfig } from '../../src/shared/config'
 
 /**
  * Configuration validation.
@@ -140,6 +140,62 @@ describe('production hardening', () => {
         TRUSTED_ORIGINS: 'https://ok.example.org,http://bad.example.org',
       }),
     ).toThrow(/must use https in production/)
+  })
+
+  describe('pre-launch insecure-origin waiver', () => {
+    test('accepts loopback http origins and a non-https base URL when opted in', () => {
+      const config = loadConfig({
+        ...PRODUCTION,
+        ALLOW_INSECURE_ORIGINS: 'true',
+        PUBLIC_BASE_URL: 'http://203.0.113.10:8080',
+        TRUSTED_ORIGINS: 'https://app.example.org,http://localhost:3000,http://127.0.0.1:5173',
+      })
+      expect(config.app.allowInsecureOrigins).toBe(true)
+    })
+
+    test('still rejects non-loopback http origins even when opted in', () => {
+      // The waiver is for a developer's own machine, never a network origin.
+      expect(() =>
+        loadConfig({
+          ...PRODUCTION,
+          ALLOW_INSECURE_ORIGINS: 'true',
+          TRUSTED_ORIGINS: 'http://192.168.1.20:3000',
+        }),
+      ).toThrow(/only permits http:\/\/localhost loopback origins/)
+      expect(() =>
+        loadConfig({
+          ...PRODUCTION,
+          ALLOW_INSECURE_ORIGINS: 'true',
+          TRUSTED_ORIGINS: 'http://dev.example.org',
+        }),
+      ).toThrow(/only permits http:\/\/localhost loopback origins/)
+    })
+
+    test('still rejects http origins without the waiver even on loopback', () => {
+      expect(() => loadConfig({ ...PRODUCTION, TRUSTED_ORIGINS: 'http://localhost:3000' })).toThrow(
+        /must use https in production/,
+      )
+    })
+
+    test('keeps every other production rule in force under the waiver', () => {
+      expect(() =>
+        loadConfig({
+          ...PRODUCTION,
+          ALLOW_INSECURE_ORIGINS: 'true',
+          TRUSTED_ORIGINS: 'http://localhost:3000',
+          EMAIL_ENABLED: 'false',
+        }),
+      ).toThrow(/EMAIL_ENABLED must be true in production/)
+    })
+
+    test('isLoopbackOrigin matches only loopback hosts over http', () => {
+      expect(isLoopbackOrigin('http://localhost:3000')).toBe(true)
+      expect(isLoopbackOrigin('http://127.0.0.1')).toBe(true)
+      expect(isLoopbackOrigin('http://[::1]:3001')).toBe(true)
+      expect(isLoopbackOrigin('http://192.168.1.20:3000')).toBe(false)
+      expect(isLoopbackOrigin('https://localhost:3000')).toBe(false)
+      expect(isLoopbackOrigin('not a url')).toBe(false)
+    })
   })
 
   test('rejects sharing one Redis between the cache and BullMQ', () => {

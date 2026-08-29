@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { openAPI, twoFactor } from 'better-auth/plugins'
+import { isLoopbackOrigin } from '../config'
 import type { AppConfig } from '../config/config.schema'
 import type { Database, TenantTransactionRunner } from '../database'
 import type { EmailDeliveryManager } from '../email'
@@ -29,7 +30,32 @@ export function createBetterAuth(
   emailDeliveries: EmailDeliveryManager,
   logger: Logger,
 ) {
-  void logger
+  // Pre-launch waiver state: a loopback origin is trusted while
+  // ALLOW_INSECURE_ORIGINS is on, so a local frontend is expected to call
+  // this API cross-site. Cookie behavior must follow, or the browser would
+  // silently drop the session: SameSite=Lax cookies are never sent on
+  // cross-site requests, and Secure cookies are never stored when the API
+  // itself is reached over plain HTTP. Both are relaxed only while the waiver
+  // is active; CSRF coverage stays on the Origin allowlist plus the
+  // x-csrf-token header check.
+  const crossSiteDevWaiver =
+    config.app.allowInsecureOrigins && config.app.trustedOrigins.some(isLoopbackOrigin)
+  const apiIsHttps = config.app.publicBaseUrl.startsWith('https://')
+
+  if (crossSiteDevWaiver) {
+    logger.warn(
+      {
+        allowInsecureOrigins: true,
+        publicBaseUrl: config.app.publicBaseUrl,
+        trustedOrigins: config.app.trustedOrigins,
+      },
+      'ALLOW_INSECURE_ORIGINS is enabled: loopback http origins are trusted and session cookies ' +
+        'are relaxed for cross-site development. Remove it before serving real users. Note: ' +
+        'browser cookie sessions require the API itself to be reached over https; over plain ' +
+        'http the browser will drop the session cookie on cross-site requests.',
+    )
+  }
+
   const tokenDigest = (url: string): string =>
     createHash('sha256').update(url).digest('hex').slice(0, 32)
 
@@ -181,7 +207,11 @@ export function createBetterAuth(
 
     advanced: {
       cookiePrefix: config.auth.cookiePrefix,
-      useSecureCookies: config.app.environment === 'production',
+      useSecureCookies:
+        config.app.environment === 'production' && (!crossSiteDevWaiver || apiIsHttps),
+      ...(crossSiteDevWaiver && apiIsHttps
+        ? { defaultCookieAttributes: { sameSite: 'none' as const } }
+        : {}),
       ...(config.auth.cookieDomain
         ? { crossSubDomainCookies: { enabled: true, domain: config.auth.cookieDomain } }
         : {}),

@@ -49,6 +49,13 @@ export const ConfigSchema = Type.Object({
     port: Type.Integer({ minimum: 1, maximum: 65535 }),
     /** Origins permitted to make credentialed cross-origin requests. */
     trustedOrigins: Type.Array(Url),
+    /**
+     * Pre-launch waiver: permit loopback `http://` origins in TRUSTED_ORIGINS
+     * (and a non-https PUBLIC_BASE_URL) while APP_ENV=production, so a local
+     * frontend can develop against a hosted API. Only loopback origins are
+     * exempt; must be false before serving real users.
+     */
+    allowInsecureOrigins: Type.Boolean(),
     /** Proxy networks allowed to supply X-Forwarded-For/X-Real-IP. */
     trustedProxyCidrs: Type.Array(NonEmptyString),
     /** Hard cap on request body size, in bytes. */

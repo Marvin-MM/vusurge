@@ -24,7 +24,8 @@ in which environment. Neither file ever contains a real secret.
 | `WEB_APP_BASE_URL` | `http://localhost:3001` | | Used to build links in transactional email |
 | `HOST` | `0.0.0.0` | | |
 | `PORT` | `3000` | | |
-| `TRUSTED_ORIGINS` | `http://localhost:3001` | | Comma-separated; all must be `https://` in production |
+| `TRUSTED_ORIGINS` | `http://localhost:3001` | | Comma-separated; all must be `https://` in production unless the `ALLOW_INSECURE_ORIGINS` waiver covers them |
+| `ALLOW_INSECURE_ORIGINS` | `false` | | Pre-launch waiver: permits loopback (`http://localhost`/`127.0.0.1`/`[::1]`) origins in `TRUSTED_ORIGINS` and a non-https `PUBLIC_BASE_URL` while `APP_ENV=production`, and relaxes session cookies (`SameSite=None`) for cross-site local development. Must be `false` (or unset) before serving real users; never covers non-loopback http origins |
 | `MAX_REQUEST_BODY_BYTES` | `1048576` | | |
 | `SHUTDOWN_TIMEOUT_MS` | `25000` | | Grace period for in-flight work during SIGTERM/SIGINT |
 
@@ -242,7 +243,9 @@ from their own jurisdiction and organizational policy before launch. See
 Enforced by `crossFieldIssues` and not separately toggleable:
 
 - `LOG_PRETTY` must be `false`.
-- `PUBLIC_BASE_URL` and every entry in `TRUSTED_ORIGINS` must use `https://`.
+- `PUBLIC_BASE_URL` and every entry in `TRUSTED_ORIGINS` must use `https://` —
+  except while the pre-launch `ALLOW_INSECURE_ORIGINS=true` waiver is active,
+  which exempts `PUBLIC_BASE_URL` and loopback `TRUSTED_ORIGINS` entries only.
 - `DATABASE_URL` must not contain `sslmode=disable`.
 - `EMAIL_ENABLED` and `OBJECT_STORAGE_ENABLED` must both be `true`.
 - `RESEND_WEBHOOK_SECRET` must be set.
