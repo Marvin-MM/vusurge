@@ -5,6 +5,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { resolvePrismaCli } from './prisma-cli'
 
 const root = join(import.meta.dir, '..')
 const snapshotPath = join(root, 'docs', 'generated', 'prisma-migration-diff.txt')
@@ -12,8 +13,8 @@ const generate = process.argv.includes('--generate')
 
 const child = Bun.spawn(
   [
-    'bunx',
-    'prisma',
+    'bun',
+    resolvePrismaCli(),
     'migrate',
     'diff',
     '--from-migrations',

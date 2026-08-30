@@ -35,7 +35,7 @@ in which environment. Neither file ever contains a real secret.
 |---|---|---|---|
 | `DATABASE_URL` | — | **yes** | Runtime connection; must use the least-privilege `ip_app` role (NOSUPERUSER, NOBYPASSRLS) |
 | `DATABASE_LISTENER_URL` | unset (use `DATABASE_URL`) | required with a transaction-mode pooler | Direct (non-pooled) endpoint for the outbox relay's LISTEN/NOTIFY session. A pooled session cannot hold LISTEN registration, so when `DATABASE_URL` goes through Neon's pooled endpoint or PgBouncer, point this at the direct host (for Neon, `DATABASE_URL` with `-pooler` removed) |
-| `MIGRATION_DATABASE_URL` | — | CLI only | Used only by `bunx prisma migrate ...`; never read by a running API/worker process |
+| `DIRECT_DATABASE_URL` | unset (use `DATABASE_URL`) | required with a transaction-mode pooler | Used only by `bun run db:migrate` (`prisma migrate deploy` in the k8s initContainers); must be the non-pooled endpoint for the migration advisory lock. Never read by a running API/worker process |
 | `DATABASE_POOL_MAX` | `10` | | |
 | `DATABASE_CONNECTION_TIMEOUT_MS` | `5000` | | |
 | `DATABASE_IDLE_TIMEOUT_MS` | `30000` | | |

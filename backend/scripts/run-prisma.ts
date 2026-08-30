@@ -5,7 +5,12 @@
  * file for this wrapper and production/CI can inject the same variables into
  * the process environment. Forwarding the environment makes both modes
  * deterministic without adding a second dotenv implementation.
+ *
+ * The CLI is resolved from this repository's node_modules only — see
+ * scripts/prisma-cli.ts for why a `bunx prisma` fallback is never acceptable.
  */
+import { resolvePrismaCli } from './prisma-cli'
+
 let prismaArguments = Bun.argv.slice(2)
 const useTestDatabase = prismaArguments[0] === '--test-database'
 
@@ -41,7 +46,7 @@ if (useTestDatabase) {
   childEnvironment.DATABASE_URL = testDatabaseUrl
 }
 
-const child = Bun.spawn(['bunx', 'prisma', ...prismaArguments], {
+const child = Bun.spawn(['bun', resolvePrismaCli(), ...prismaArguments], {
   cwd: process.cwd(),
   env: childEnvironment,
   stdin: 'inherit',

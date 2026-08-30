@@ -13,13 +13,20 @@
 # checkouts work offline. See docs/adr/0019-prisma-7-generated-client-and-typedsql.md.
 #
 # Because the client is committed, `bun install` here never needs to run a
-# generate step, which is why every install below runs with --ignore-scripts:
-# @prisma/client ships a postinstall that shells out to the `prisma` CLI, and
-# that CLI is a devDependency that --production installs deliberately exclude.
-# Without --ignore-scripts, `bun install --production` would fail trying to
-# invoke a binary that isn't there. Ignoring lifecycle scripts everywhere also
-# closes off the most common supply-chain-attack vector in the JS ecosystem
-# (a compromised transitive dependency running arbitrary code at install time).
+# generate step, which is why every install below runs with --ignore-scripts.
+# Ignoring lifecycle scripts everywhere also closes off the most common
+# supply-chain-attack vector in the JS ecosystem (a compromised transitive
+# dependency running arbitrary code at install time); the one postinstall we
+# genuinely need (the Prisma engine download) is triggered manually below.
+#
+# `prisma` (the CLI) is a DIRECT production dependency on purpose: the k8s
+# initContainers run `bun run db:migrate` from this image at pod start, so the
+# CLI must ship inside the production install. It must never drift back to
+# devDependencies — a production install without it makes `bunx prisma`
+# silently fetch an untracked prisma@latest from npm at pod start, which is
+# exactly how Prisma 8's `migrate`→`migration` rename broke every new pod on
+# 2026-08-29 while old pods kept serving. The guards in the dependencies and
+# runtime stages below fail the build if that ever regresses.
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -46,6 +53,14 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 # trigger the Prisma engines download. Without this, the schema-engine binary
 # is missing and `prisma migrate deploy` crashes in the initContainer.
 RUN bun run ./node_modules/@prisma/engines/scripts/postinstall.js
+
+# The initContainers migrate with the Prisma CLI from THIS node_modules, so
+# fail the build — with a nonzero exit rather than a broken rollout — if the
+# CLI or the schema-engine binary did not make it into the production install
+# (e.g. `prisma` drifting back to devDependencies, or the engines postinstall
+# above silently skipping the download).
+RUN test -f node_modules/prisma/build/index.js \
+  && test -n "$(find node_modules/@prisma/engines -maxdepth 1 -name 'schema-engine-*' -print -quit)"
 
 # ---------------------------------------------------------------------------
 # Build-time verification
@@ -121,6 +136,13 @@ COPY --chown=bun:bun scripts ./scripts
 
 # Ensure verification ran before anything is shipped.
 COPY --from=verify /app/package.json /tmp/verified.json
+
+# End-to-end gate for the migration toolchain this image ships: `db:validate`
+# resolves the CLI from ./node_modules (scripts/prisma-cli.ts refuses any
+# other source), loads prisma.config.ts, and parses the schema — no database
+# needed. If the CLI is missing, wrong-major, or unrunnable, the IMAGE BUILD
+# fails here instead of every pod's initContainer failing at rollout time.
+RUN bun run db:validate
 
 USER bun
 

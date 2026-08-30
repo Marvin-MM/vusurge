@@ -13,6 +13,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { resolvePrismaCli } from './prisma-cli'
 
 const name = process.argv[2]
 
@@ -25,9 +26,9 @@ const backendDir = join(import.meta.dir, '..')
 const migrationsDir = join(backendDir, 'prisma', 'migrations')
 
 const diff = spawnSync(
-  'bunx',
+  'bun',
   [
-    'prisma',
+    resolvePrismaCli(),
     'migrate',
     'diff',
     '--from-migrations',
