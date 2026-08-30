@@ -99,7 +99,7 @@ protects.
 | `WORKER_CONCURRENCY_CACHE_MAINTENANCE` | `2` |
 | `WORKER_CONCURRENCY_OUTBOX_DISPATCH` | `1` |
 | `OUTBOX_BATCH_SIZE` | `100` |
-| `OUTBOX_POLL_INTERVAL_MS` | `30000` | | Fallback sweep for the LISTEN/NOTIFY outbox relay: bounds the delay of a missed notification; dispatch itself is notification-driven |
+| `OUTBOX_POLL_INTERVAL_MS` | `300000` | | Fallback sweep for the LISTEN/NOTIFY outbox relay: bounds the delay of a missed notification; dispatch itself is notification-driven. Matches `OUTBOX_STALE_ENQUEUED_AFTER_MS` so a missed notification costs no more than a crashed worker; on autosuspend hosts (Neon) polling faster than the suspend timeout keeps the compute awake |
 | `OUTBOX_STALE_ENQUEUED_AFTER_MS` | `300000` (5 min) — rows stuck `ENQUEUED` longer than this are reclaimed |
 | `OUTBOX_MAX_ATTEMPTS` | `10` |
 

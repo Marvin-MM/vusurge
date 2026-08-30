@@ -1,6 +1,7 @@
 import { Client } from 'pg'
 import type { AppConfig } from '../config/config.schema'
 import { describeError, type Logger } from '../logging'
+import { appMetrics } from '../observability'
 import { OUTBOX_NOTIFY_CHANNEL } from './outbox-channel'
 
 /**
@@ -37,15 +38,60 @@ export interface OutboxListener {
   stop(): Promise<void>
 }
 
+/** How long the startup delivery self-test waits for its probe notification. */
+const SELF_TEST_TIMEOUT_MS = 10_000
+
+/**
+ * Probe payload for the delivery self-test. Distinct from writer payloads so
+ * the relay can distinguish a self-test from real work; either way, a
+ * wake-up on the channel is a wake-up.
+ */
+const SELF_TEST_PAYLOAD = JSON.stringify({ selfTest: true })
+
 export function createOutboxListener(config: AppConfig, logger: Logger): OutboxListener {
   const connectionString = config.database.listenerUrl ?? config.database.url
   const channel = OUTBOX_NOTIFY_CHANNEL
+  const metrics = appMetrics()
 
   let client: Client | undefined
   let stopped = false
   let restartTimer: ReturnType<typeof setTimeout> | undefined
   let notificationHandler: ((payload: string) => void) | undefined
   let connectedHandler: (() => void) | undefined
+  let probeResolver: ((received: boolean) => void) | undefined
+
+  /**
+   * Delivery self-test: notify the channel from this same connection and
+   * confirm the notification comes back. A LISTEN that registered on the
+   * wrong server session (a pooled URL slipped through) still "succeeds" as
+   * a statement — the only way to detect it is to round-trip a real
+   * notification. Run once per connection at startup; a failure is logged
+   * loudly with the fix, because every wake-up would otherwise silently
+   * degrade to fallback-only polling.
+   */
+  async function verifyDelivery(connection: Client): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let settled = false
+      const finish = (received: boolean) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        probeResolver = undefined
+        resolve(received)
+      }
+
+      // The 'notification' handler consults this before the typed handler,
+      // so the probe is observed even though onNotification is wired later.
+      probeResolver = finish
+
+      const timeout = setTimeout(() => finish(false), SELF_TEST_TIMEOUT_MS)
+      timeout.unref?.()
+
+      connection
+        .query('select pg_notify($1, $2)', [channel, SELF_TEST_PAYLOAD])
+        .catch(() => finish(false))
+    })
+  }
 
   async function connect(attempt: number): Promise<void> {
     if (stopped) return
@@ -59,9 +105,15 @@ export function createOutboxListener(config: AppConfig, logger: Logger): OutboxL
     // be re-issued after every reconnect: it does not survive a dropped
     // session.
     connection.on('notification', (message) => {
-      if (message.channel === channel && notificationHandler !== undefined) {
-        notificationHandler(message.payload ?? '')
+      if (message.channel !== channel) return
+      // The self-test probe settles first, so it never reaches the relay as
+      // a (harmless but noisy) wake-up.
+      const probe = probeResolver
+      if (probe !== undefined && message.payload === SELF_TEST_PAYLOAD) {
+        probe(true)
+        return
       }
+      notificationHandler?.(message.payload ?? '')
     })
 
     connection.on('error', (error) => {
@@ -102,6 +154,26 @@ export function createOutboxListener(config: AppConfig, logger: Logger): OutboxL
 
     client = connection
     logger.info({ channel }, 'Outbox listener connected and listening')
+
+    // Round-trip a probe notification once at startup. A failure means every
+    // real notification would be lost too, so say so plainly — with the most
+    // likely cause — instead of letting dispatch silently degrade to the
+    // fallback interval.
+    const delivered = await verifyDelivery(connection)
+    metrics.outboxNotifySelfTest.add(1, { result: delivered ? 'passed' : 'failed' })
+    if (!delivered) {
+      logger.error(
+        { channel, hasListenerUrl: config.database.listenerUrl !== undefined },
+        'Outbox listener self-test FAILED: pg_notify on the channel did not arrive on this ' +
+          'connection. Dispatch will degrade to fallback-only polling. The listener URL almost ' +
+          'certainly goes through a transaction-mode pooler (Neon pooled endpoint, PgBouncer), ' +
+          'where LISTEN registration cannot survive. Set DATABASE_LISTENER_URL to a DIRECT ' +
+          '(non-pooled) endpoint.',
+      )
+    } else {
+      logger.info({ channel }, 'Outbox listener self-test passed: notifications round-trip')
+    }
+
     // Startup, and every reconnect: notifications sent while absent were
     // dropped, so the relay sweeps as soon as it hears from us.
     connectedHandler?.()

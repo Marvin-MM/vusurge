@@ -41,6 +41,8 @@ export interface AppMetrics {
   readonly outboxReconciled: Counter
   /** Relay wake-ups by source — how much dispatch work is notification-driven. */
   readonly outboxRelayWakes: Counter
+  /** LISTEN/NOTIFY delivery self-test outcomes at relay startup. */
+  readonly outboxNotifySelfTest: Counter
 
   // Providers
   readonly emailSends: Counter
@@ -132,6 +134,9 @@ export function createMetrics(): AppMetrics {
     }),
     outboxRelayWakes: meter.createCounter('outbox.relay.wakes', {
       description: 'Outbox relay wake-ups by source (notification, fallback, reconciliation)',
+    }),
+    outboxNotifySelfTest: meter.createCounter('outbox.notify.self_test', {
+      description: 'LISTEN/NOTIFY delivery self-test outcomes (passed, failed)',
     }),
 
     emailSends: meter.createCounter('email.sends', {

@@ -65,6 +65,10 @@ export function createOutboxRelay(deps: RelayDependencies): OutboxRelay {
   function wake(source: WakeSource): void {
     if (!running) return
     metrics.outboxRelayWakes.add(1, { source })
+    // Debug level: with LOG_LEVEL=info (production default) an idle relay is
+    // silent, which is the point; raise the level when diagnosing whether
+    // wake-ups are notification- or fallback-driven.
+    logger.debug({ source }, 'Outbox relay woken')
 
     if (sleeperResolve !== undefined) {
       const resolve = sleeperResolve

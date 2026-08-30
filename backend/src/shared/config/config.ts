@@ -158,8 +158,12 @@ export function loadConfig(env: Env = process.env as Env): AppConfig {
         batchSize: int(env, 'OUTBOX_BATCH_SIZE', 100),
         // Fallback sweep for the LISTEN/NOTIFY relay, not the primary
         // dispatch trigger: notifications drive dispatch, this only bounds
-        // the damage of a missed one.
-        pollIntervalMs: int(env, 'OUTBOX_POLL_INTERVAL_MS', 30_000),
+        // the damage of a missed one. 5 minutes matches
+        // OUTBOX_STALE_ENQUEUED_AFTER_MS, the other outbox safety net, so a
+        // missed notification costs the same worst-case delay as a crashed
+        // worker. On hosted Postgres (Neon), activity more frequent than the
+        // compute suspend timeout also keeps the compute permanently awake.
+        pollIntervalMs: int(env, 'OUTBOX_POLL_INTERVAL_MS', 300_000),
         staleEnqueuedAfterMs: int(env, 'OUTBOX_STALE_ENQUEUED_AFTER_MS', 300_000),
         maxAttempts: int(env, 'OUTBOX_MAX_ATTEMPTS', 10),
       },
