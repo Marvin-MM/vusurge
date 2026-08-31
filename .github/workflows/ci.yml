@@ -13,7 +13,13 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 # Default to the least privilege the workflow needs; individual jobs escalate
