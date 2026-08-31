@@ -15,6 +15,7 @@ export interface PermissionGateProps {
  * matching server-side check (see backend/docs/permissions-matrix.md);
  * hiding a control here never substitutes for real authorization.
  */
+
 export function PermissionGate({
   permission,
   challengeId,
