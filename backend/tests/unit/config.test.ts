@@ -258,6 +258,43 @@ describe('string format validation', () => {
   })
 })
 
+describe('bootstrap superadmin configuration', () => {
+  test('accepts a fully configured bootstrap pair', () => {
+    const config = load({
+      BOOTSTRAP_SUPERADMIN_EMAIL: 'admin@example.org',
+      BOOTSTRAP_SUPERADMIN_PASSWORD: 'a-strong-bootstrap-password',
+    })
+    expect(config.bootstrap.superadminEmail).toBe('admin@example.org')
+    expect(config.bootstrap.superadminPassword).toBe('a-strong-bootstrap-password')
+  })
+
+  test('accepts a fully absent bootstrap configuration', () => {
+    const config = load()
+    expect(config.bootstrap.superadminEmail).toBeUndefined()
+    expect(config.bootstrap.superadminPassword).toBeUndefined()
+  })
+
+  test('rejects an email without a password', () => {
+    expectIssue({ BOOTSTRAP_SUPERADMIN_EMAIL: 'admin@example.org' }, 'must be set together')
+  })
+
+  test('rejects a password without an email', () => {
+    expectIssue(
+      { BOOTSTRAP_SUPERADMIN_PASSWORD: 'a-strong-bootstrap-password' },
+      'must be set together',
+    )
+  })
+
+  test('rejects a bootstrap password shorter than 12 characters', () => {
+    // The ordinary account floor is 8; the seeded superadmin is the most
+    // privileged credential on the platform and must clear a higher bar.
+    expectIssue(
+      { BOOTSTRAP_SUPERADMIN_EMAIL: 'admin@example.org', BOOTSTRAP_SUPERADMIN_PASSWORD: 'short' },
+      'BOOTSTRAP_SUPERADMIN_PASSWORD must be at least 12 characters',
+    )
+  })
+})
+
 describe('bounds', () => {
   test('rejects a default page size larger than the maximum', () => {
     expectIssue(

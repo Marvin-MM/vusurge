@@ -263,6 +263,16 @@ export function authorize(
     )
   }
 
+  if (decision.code === ErrorCode.MFA_ENROLLMENT_REQUIRED) {
+    // Enrollment is the earlier of the two two-factor gates: the account has
+    // no authenticator at all, so the client should route to the setup flow,
+    // not an OTP prompt.
+    throw forbidden(
+      'Set up two-factor authentication on this account before performing this action.',
+      ErrorCode.MFA_ENROLLMENT_REQUIRED,
+    )
+  }
+
   if (decision.code === ErrorCode.MFA_REQUIRED) {
     throw forbidden(
       'Two-factor authentication must be enabled on this account before performing this action.',

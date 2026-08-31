@@ -68,7 +68,22 @@ and is never read by the API or worker process.
 | `AUTH_COOKIE_PREFIX` | `ip` | | |
 | `AUTH_COOKIE_DOMAIN` | host-only | | Set only if API and web client are on different subdomains of one registrable domain |
 | `GOOGLE_OAUTH_ENABLED` | `false` | | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` required when true |
+| `BOOTSTRAP_SUPERADMIN_EMAIL` | unset | both-or-neither | First-deploy superadmin seed; see the subsection below |
+| `BOOTSTRAP_SUPERADMIN_PASSWORD` | unset | both-or-neither | ≥12 chars or boot fails; unset after first sign-in |
 | `GITHUB_OAUTH_ENABLED` | `false` | | `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` required when true; only default public scopes requested, never private-repo scopes |
+
+### First-boot superadmin bootstrap
+
+`BOOTSTRAP_SUPERADMIN_EMAIL` and `BOOTSTRAP_SUPERADMIN_PASSWORD` are set
+together or not at all (boot fails otherwise). Intended for the very first
+deploy, before any user exists to receive the first `PLATFORM_SUPERADMIN`
+grant via the operator script (`bun run bootstrap:superadmin`). The API seeds
+the account on startup — idempotently, with an atomic audit event — but does
+NOT pre-enroll 2FA: the authorization policy returns `MFA_ENROLLMENT_REQUIRED`
+for an unenrolled superadmin, forcing enrollment before the role grants
+anything. Later promotions must use the operator script (existing, verified,
+2FA-enrolled user + operator justification). After first sign-in, unset the
+password variable so the credential no longer lives in the environment.
 
 ## Redis (two separate deployments)
 

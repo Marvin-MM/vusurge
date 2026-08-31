@@ -9,6 +9,7 @@ import {
   ORGANIZATION_ROLE_PERMISSIONS,
   Permission,
   PLATFORM_ROLE_PERMISSIONS,
+  requireFreshActor,
 } from '../../src/shared/authorization'
 
 /**
@@ -412,6 +413,105 @@ describe('sensitive operation gating', () => {
     expect(() =>
       authorize(noMfa, Permission.PlatformManageOrganizations, { requireFreshSession: true }),
     ).toThrow(/two-factor/i)
+  })
+
+  test('an unenrolled superadmin is denied with MFA_ENROLLMENT_REQUIRED, not MFA_REQUIRED', () => {
+    // The two codes drive different client screens: enrollment wizard vs OTP
+    // prompt. Collapsing them would strand a superadmin behind a prompt that
+    // can never succeed.
+    const unenrolled: AccessContext = {
+      actor: actor({ platformRoles: ['PLATFORM_SUPERADMIN'], twoFactorEnabled: false }),
+    }
+
+    const decision = checkPermission(unenrolled, Permission.PlatformManageOrganizations)
+    expect(decision.allowed).toBe(false)
+    expect(decision.code).toBe('MFA_ENROLLMENT_REQUIRED')
+
+    const freshSessionDecision = checkPermission(
+      unenrolled,
+      Permission.PlatformManageOrganizations,
+      {
+        requireFreshSession: true,
+      },
+    )
+    expect(freshSessionDecision.code).toBe('MFA_ENROLLMENT_REQUIRED')
+
+    // authorize() must surface the code, not the generic forbidden message:
+    // the MfaEnrollmentGate routes on it.
+    try {
+      authorize(unenrolled, Permission.PlatformManageOrganizations)
+      throw new Error('expected authorize to throw')
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe('MFA_ENROLLMENT_REQUIRED')
+    }
+  })
+
+  test('an enrolled superadmin without session assurance gets MFA_REQUIRED, not the enrollment code', () => {
+    // Plain platform permissions only require that MFA was verified at some
+    // point in the session; recency is enforced by requireFreshSession. So
+    // the distinguishing case for MFA_REQUIRED is the fresh-session path with
+    // an enrolled-but-stale (or absent) verification timestamp.
+    const enrolledStale: AccessContext = {
+      actor: actor({
+        platformRoles: ['PLATFORM_SUPERADMIN'],
+        twoFactorEnabled: true,
+        mfaVerifiedAt: new Date(Date.now() - 901_000),
+        authenticationMethod: 'mfa',
+      }),
+    }
+
+    const decision = checkPermission(enrolledStale, Permission.PlatformManageOrganizations, {
+      requireFreshSession: true,
+      freshSessionMaxAgeSeconds: 900,
+    })
+    expect(decision.code).toBe('MFA_REQUIRED')
+
+    const neverVerified: AccessContext = {
+      actor: actor({
+        platformRoles: ['PLATFORM_SUPERADMIN'],
+        twoFactorEnabled: true,
+        mfaVerifiedAt: null,
+        authenticationMethod: 'oauth',
+      }),
+    }
+    expect(checkPermission(neverVerified, Permission.PlatformManageOrganizations).code).toBe(
+      'MFA_REQUIRED',
+    )
+  })
+
+  test('requireFreshActor distinguishes enrollment from session assurance', () => {
+    const unenrolled: AccessContext = {
+      actor: actor({ platformRoles: ['PLATFORM_SUPERADMIN'], twoFactorEnabled: false }),
+    }
+    const enrolledStale: AccessContext = {
+      actor: actor({
+        platformRoles: ['PLATFORM_SUPERADMIN'],
+        twoFactorEnabled: true,
+        mfaVerifiedAt: new Date(Date.now() - 901_000),
+        authenticationMethod: 'mfa',
+      }),
+    }
+
+    try {
+      requireFreshActor(unenrolled)
+      throw new Error('expected requireFreshActor to throw for an unenrolled superadmin')
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe('MFA_ENROLLMENT_REQUIRED')
+    }
+
+    try {
+      requireFreshActor(enrolledStale)
+      throw new Error('expected requireFreshActor to throw for stale MFA assurance')
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe('MFA_REQUIRED')
+    }
+
+    // A non-superadmin never hits either gate through requireFreshActor:
+    // freshness alone is what they owe.
+    const ordinary = requireFreshActor({
+      actor: actor({ platformRoles: [], twoFactorEnabled: false }),
+    })
+    expect(ordinary.actor.emailVerified).toBe(true)
   })
 
   test('MFA enrollment without session assurance grants no platform permission', () => {

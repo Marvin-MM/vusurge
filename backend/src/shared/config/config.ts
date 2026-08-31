@@ -339,6 +339,25 @@ function crossFieldIssues(config: AppConfig): string[] {
   if (config.queueRedis.url === '') {
     issues.push('QUEUE_REDIS_URL is required')
   }
+  {
+    const { superadminEmail, superadminPassword } = config.bootstrap
+    const emailSet = superadminEmail !== undefined
+    const passwordSet = superadminPassword !== undefined
+    // A half-configured bootstrap would silently skip (the runtime path
+    // requires both), leaving an operator who believes they seeded an admin
+    // with none. Make the mistake loud at boot instead.
+    if (emailSet !== passwordSet) {
+      issues.push(
+        'BOOTSTRAP_SUPERADMIN_EMAIL and BOOTSTRAP_SUPERADMIN_PASSWORD must be set together',
+      )
+    }
+    // Stricter than the ordinary account floor (better-auth enforces 8): this
+    // is the platform's most privileged credential, and rejecting it at boot
+    // beats discovering it at first sign-in.
+    if (passwordSet && superadminPassword.length < 12) {
+      issues.push('BOOTSTRAP_SUPERADMIN_PASSWORD must be at least 12 characters')
+    }
+  }
   if (config.auth.secret === '') {
     issues.push('BETTER_AUTH_SECRET is required (at least 32 characters)')
   }
