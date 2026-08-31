@@ -247,6 +247,11 @@ export function loadConfig(env: Env = process.env as Env): AppConfig {
       maxConnectionsPerIp: int(env, 'SSE_NOTIFICATION_MAX_CONNECTIONS_PER_IP', 10),
     },
 
+    bootstrap: {
+      superadminEmail: optional(str(env, 'BOOTSTRAP_SUPERADMIN_EMAIL')),
+      superadminPassword: optional(str(env, 'BOOTSTRAP_SUPERADMIN_PASSWORD')),
+    },
+
     uploads: {
       maxImageBytes: int(env, 'UPLOAD_MAX_IMAGE_BYTES', 5_242_880),
       maxDocumentBytes: int(env, 'UPLOAD_MAX_DOCUMENT_BYTES', 26_214_400),

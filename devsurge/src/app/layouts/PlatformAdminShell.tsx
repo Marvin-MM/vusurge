@@ -31,6 +31,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUiStore } from "@/stores/useUiStore";
 import { can } from "@/types/permissions";
 import { cn } from "@/lib/utils";
+import { MfaEnrollmentGate } from "@/features/superadmin/components/MfaEnrollmentGate";
 
 export function PlatformAdminShell() {
   const { user, userContext, logout } = useAuth();
@@ -80,6 +81,15 @@ export function PlatformAdminShell() {
         </div>
       </div>
     );
+  }
+
+  // Superadmins must have 2FA enrolled before accessing the portal.
+  // Support agents are not subject to this requirement.
+  if (
+    userContext.globalRole === "PLATFORM_SUPERADMIN" &&
+    !user?.twoFactorEnabled
+  ) {
+    return <MfaEnrollmentGate email={user?.email} />;
   }
 
   return (

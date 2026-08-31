@@ -25,6 +25,8 @@ export const ErrorCode = {
   EMAIL_NOT_VERIFIED: 'EMAIL_NOT_VERIFIED',
   FRESH_SESSION_REQUIRED: 'FRESH_SESSION_REQUIRED',
   MFA_REQUIRED: 'MFA_REQUIRED',
+  /** Actor has no 2FA method enrolled yet; must complete enrollment before proceeding. */
+  MFA_ENROLLMENT_REQUIRED: 'MFA_ENROLLMENT_REQUIRED',
   CSRF_VALIDATION_FAILED: 'CSRF_VALIDATION_FAILED',
 
   // --- Authorization -------------------------------------------------------

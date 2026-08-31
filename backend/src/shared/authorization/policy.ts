@@ -97,11 +97,20 @@ export function checkPermission(
       }
     }
 
-    if (actor.platformRoles.includes('PLATFORM_SUPERADMIN') && !hasMfaAssurance(context, maxAge)) {
-      return {
-        allowed: false,
-        reason: 'platform superadmin session lacks recent MFA assurance',
-        code: ErrorCode.MFA_REQUIRED,
+    if (actor.platformRoles.includes('PLATFORM_SUPERADMIN')) {
+      if (!actor.twoFactorEnabled) {
+        return {
+          allowed: false,
+          reason: 'platform superadmin has not enrolled in two-factor authentication',
+          code: ErrorCode.MFA_ENROLLMENT_REQUIRED,
+        }
+      }
+      if (!hasMfaAssurance(context, maxAge)) {
+        return {
+          allowed: false,
+          reason: 'platform superadmin session lacks recent MFA assurance',
+          code: ErrorCode.MFA_REQUIRED,
+        }
       }
     }
   }
@@ -111,14 +120,24 @@ export function checkPermission(
   // super-set of organization roles, and they grant only platform permissions.
   for (const role of actor.platformRoles) {
     if (platformRoleHas(role, permission)) {
-      if (
-        role === 'PLATFORM_SUPERADMIN' &&
-        (!actor.twoFactorEnabled || !hasMfaAssurance(context))
-      ) {
-        return {
-          allowed: false,
-          reason: 'platform superadmin session lacks MFA assurance',
-          code: ErrorCode.MFA_REQUIRED,
+      if (role === 'PLATFORM_SUPERADMIN') {
+        // Two-factor is mandatory for superadmins. Distinguish the two failure
+        // modes so the client can route to the right screen:
+        //   - MFA_ENROLLMENT_REQUIRED → no authenticator enrolled yet → show setup wizard.
+        //   - MFA_REQUIRED            → enrolled but not verified in this session → show OTP prompt.
+        if (!actor.twoFactorEnabled) {
+          return {
+            allowed: false,
+            reason: 'platform superadmin has not enrolled in two-factor authentication',
+            code: ErrorCode.MFA_ENROLLMENT_REQUIRED,
+          }
+        }
+        if (!hasMfaAssurance(context)) {
+          return {
+            allowed: false,
+            reason: 'platform superadmin session lacks MFA assurance',
+            code: ErrorCode.MFA_REQUIRED,
+          }
         }
       }
       return { allowed: true }
@@ -309,11 +328,19 @@ export function requireFreshActor(
       ErrorCode.FRESH_SESSION_REQUIRED,
     )
   }
-  if (
-    authenticated.actor.platformRoles.includes('PLATFORM_SUPERADMIN') &&
-    !hasMfaAssurance(authenticated, maxAgeSeconds)
-  ) {
-    throw forbidden('This action requires recent two-factor verification.', ErrorCode.MFA_REQUIRED)
+  if (authenticated.actor.platformRoles.includes('PLATFORM_SUPERADMIN')) {
+    if (!authenticated.actor.twoFactorEnabled) {
+      throw forbidden(
+        'Platform superadmins must enroll in two-factor authentication before performing this action.',
+        ErrorCode.MFA_ENROLLMENT_REQUIRED,
+      )
+    }
+    if (!hasMfaAssurance(authenticated, maxAgeSeconds)) {
+      throw forbidden(
+        'This action requires recent two-factor verification.',
+        ErrorCode.MFA_REQUIRED,
+      )
+    }
   }
   return authenticated
 }

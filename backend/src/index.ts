@@ -1,4 +1,5 @@
 import { createApp } from './app'
+import { bootstrapSuperadmin } from './bootstrap'
 import { buildInfrastructure, shutdownInfrastructure, startInfrastructure } from './container'
 import { ConfigurationError } from './shared/config'
 import { withRequestScope } from './shared/http'
@@ -21,6 +22,9 @@ async function main(): Promise<void> {
   const { config, logger } = infrastructure
 
   await startInfrastructure(infrastructure)
+
+  // Ensure initial superadmin is seeded if configured
+  await bootstrapSuperadmin(infrastructure)
 
   const app = createApp({ infrastructure })
 

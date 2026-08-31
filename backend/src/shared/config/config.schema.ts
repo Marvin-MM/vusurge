@@ -227,6 +227,11 @@ export const ConfigSchema = Type.Object({
     maxConnectionsPerIp: Type.Integer({ minimum: 1, maximum: 100 }),
   }),
 
+  bootstrap: Type.Object({
+    superadminEmail: Type.Optional(NonEmptyString),
+    superadminPassword: Type.Optional(NonEmptyString),
+  }),
+
   uploads: Type.Object({
     maxImageBytes: Type.Integer({ minimum: 1024 }),
     maxDocumentBytes: Type.Integer({ minimum: 1024 }),
