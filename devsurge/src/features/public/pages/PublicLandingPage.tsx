@@ -19,6 +19,7 @@ import { OrganizationCard } from "@/components/shared/OrganizationCard";
 import { FAQList, FAQItem } from "@/components/shared/FAQList";
 import DotField from "@/features/public/components/DotField";
 import { StickyCard_001 } from "@/components/ui/skiper-ui/skiper16";
+import { SponsorsSection } from "@/features/public/components/SponsorsSection";
 
 const previewFAQs: FAQItem[] = [
   {
@@ -131,9 +132,11 @@ export function PublicLandingPage() {
         </div>
       </section>
 
+      {/* 2. Sponsors & Partners */}
+      <SponsorsSection />
 
       {/* 3. How VUSurge Works */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="space-y-2 text-center max-w-2xl mx-auto">
           <span className="text-xs font-bold text-primary">How It Works</span>
           <h2 className="text-2xl sm:text-2xl font-montserrat font-extrabold tracking-tight text-foreground">
@@ -141,7 +144,7 @@ export function PublicLandingPage() {
           </h2>
         </div>
 
-        <div ref={howItWorksRef} className="relative flex flex-col items-center pt-[10vh] pb-[100vh]">
+        <div ref={howItWorksRef} className="relative flex flex-col items-center -mt-24 sm:-mt-32 pb-72 sm:pb-80">
           {howItWorksSteps.map((item, i) => {
             const Icon = item.icon;
             const targetScale = Math.max(0.5, 1 - (howItWorksSteps.length - i - 1) * 0.1);

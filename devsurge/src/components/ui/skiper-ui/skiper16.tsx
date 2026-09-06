@@ -35,6 +35,7 @@ const StickyCard_001 = ({
   targetScale,
   children,
   className,
+  topOffset = 250,
 }: {
   i: number;
   progress: MotionValue<number>;
@@ -42,6 +43,7 @@ const StickyCard_001 = ({
   targetScale: number;
   children?: React.ReactNode;
   className?: string;
+  topOffset?: number;
 }) => {
   const container = useRef<HTMLDivElement>(null);
 
@@ -55,7 +57,7 @@ const StickyCard_001 = ({
       <motion.div
         style={{
           scale,
-          top: `calc(-5vh + ${i * 20 + 250}px)`,
+          top: `calc(-5vh + ${i * 20 + topOffset}px)`,
         }}
         className={cn(
           "relative flex min-h-[300px] w-[min(90%,500px)] origin-top flex-col overflow-hidden rounded-4xl",

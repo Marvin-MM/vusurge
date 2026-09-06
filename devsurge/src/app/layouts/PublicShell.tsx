@@ -281,6 +281,22 @@ export function PublicShell() {
         </div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between text-xs gap-4">
           <p>© {new Date().getFullYear()} VUSurge Innovation Platform. All rights reserved.</p>
+          <a
+            href="https://vu.ac.ug/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 group opacity-60 hover:opacity-100 transition-opacity duration-300"
+            title="Victoria University Kampala"
+          >
+            <span className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold group-hover:text-foreground transition-colors">
+              Powered by
+            </span>
+            <img
+              src="https://vu.ac.ug/_nuxt/vu-logo-with-words.D9F_ScYN.png"
+              alt="Victoria University Kampala"
+              className="h-5 w-auto object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
+            />
+          </a>
         </div>
       </footer>
 
